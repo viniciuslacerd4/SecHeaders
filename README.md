@@ -227,10 +227,10 @@ E retorna em português:
 
 Este projeto foi desenvolvido como TCC I do curso de **Sistemas de Informação**.
 
-**Aluno:** [Seu Nome]  
-**Orientador:** [Nome do Orientador]  
-**Instituição:** [Nome da Universidade]  
-**Ano:** 2025
+**Aluno:** Vinicius Lacerda Borges  
+**Orientador:** Jhonatta Pietro de Oliveira  
+**Instituição:** Centro Universitário Paraíso — UniFAP  
+**Período:** 2026.1 (TCC I)
 
 ---
 
