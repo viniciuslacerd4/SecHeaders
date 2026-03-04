@@ -3,10 +3,15 @@ main.py — Entrypoint da API FastAPI do SecHeaders.
 
 Rotas:
   GET  /health              → Healthcheck
+  GET  /llm-status          → Status do LLM padrão
   POST /analyze             → Análise completa de security headers
   GET  /history             → Lista de análises anteriores
   GET  /history/{id}        → Detalhes de uma análise específica
   GET  /export/{id}         → Exportar análise em PDF
+  POST /api-keys/store      → Salvar API key criptografada
+  GET  /api-keys/{device}   → Listar keys salvas (apenas hints)
+  DELETE /api-keys/{d}/{p}  → Remover key de um provider
+  POST /api-keys/models     → Listar modelos usando key armazenada
 """
 
 from __future__ import annotations
@@ -20,13 +25,14 @@ from fastapi import FastAPI, HTTPException, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from analyzer import analyze_url, AnalysisResult
+from crypto import encrypt_api_key, decrypt_api_key, get_key_hint
 from database import init_db, get_db
 from llm import explain_all_headers, generate_summary, has_default_llm, get_default_llm_info
-from models import Analysis
+from models import Analysis, StoredAPIKey
 from pdf_export import generate_pdf
 from scorer import calculate_score, ScoreResult
 
@@ -91,6 +97,43 @@ class ListModelsRequest(BaseModel):
     """Corpo da requisição para listar modelos disponíveis."""
     provider: str
     api_key: str
+
+
+class StoreAPIKeyRequest(BaseModel):
+    """Corpo da requisição para salvar uma API key."""
+    device_id: str
+    provider: str
+    api_key: str
+    model: str = ""
+
+    @field_validator("device_id")
+    @classmethod
+    def validate_device_id(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) < 16:
+            raise ValueError("device_id inválido.")
+        return v
+
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) < 5:
+            raise ValueError("API key inválida.")
+        return v
+
+
+class UpdateModelRequest(BaseModel):
+    """Corpo da requisição para atualizar o modelo de um provider."""
+    device_id: str
+    provider: str
+    model: str
+
+
+class StoredModelsRequest(BaseModel):
+    """Corpo da requisição para listar modelos usando key armazenada."""
+    device_id: str
+    provider: str
 
 
 class AnalyzeResponse(BaseModel):
@@ -240,6 +283,181 @@ async def list_models(request: ListModelsRequest):
         )
 
 
+# ──────────────────────────────────────────────
+#  API Keys — armazenamento seguro
+# ──────────────────────────────────────────────
+
+
+@app.post("/api-keys/store")
+async def store_api_key(request: StoreAPIKeyRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Salva uma API key criptografada no servidor.
+    A key é criptografada com Fernet (AES-128-CBC + HMAC).
+    Nunca é retornada ao frontend após ser salva.
+    """
+    # Verifica se já existe uma key para este device+provider
+    stmt = select(StoredAPIKey).where(
+        StoredAPIKey.device_id == request.device_id,
+        StoredAPIKey.provider == request.provider.lower(),
+    )
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+
+    encrypted = encrypt_api_key(request.api_key)
+    hint = get_key_hint(request.api_key)
+
+    if existing:
+        existing.encrypted_key = encrypted
+        existing.key_hint = hint
+        existing.model = request.model
+        existing.updated_at = datetime.now(timezone.utc)
+    else:
+        new_key = StoredAPIKey(
+            device_id=request.device_id,
+            provider=request.provider.lower(),
+            encrypted_key=encrypted,
+            key_hint=hint,
+            model=request.model,
+        )
+        db.add(new_key)
+
+    await db.commit()
+
+    return {
+        "status": "saved",
+        "provider": request.provider.lower(),
+        "hint": hint,
+        "model": request.model,
+    }
+
+
+@app.get("/api-keys/{device_id}")
+async def list_stored_keys(device_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Lista API keys salvas para um dispositivo.
+    Retorna apenas provider, hint e modelo — NUNCA a key real.
+    """
+    stmt = select(StoredAPIKey).where(StoredAPIKey.device_id == device_id)
+    result = await db.execute(stmt)
+    keys = result.scalars().all()
+
+    return {
+        "keys": [
+            {
+                "provider": k.provider,
+                "hint": k.key_hint,
+                "model": k.model or "",
+                "updated_at": k.updated_at.isoformat() if k.updated_at else "",
+            }
+            for k in keys
+        ]
+    }
+
+
+@app.delete("/api-keys/{device_id}/{provider}")
+async def delete_stored_key(device_id: str, provider: str, db: AsyncSession = Depends(get_db)):
+    """Remove uma API key armazenada."""
+    stmt = delete(StoredAPIKey).where(
+        StoredAPIKey.device_id == device_id,
+        StoredAPIKey.provider == provider.lower(),
+    )
+    await db.execute(stmt)
+    await db.commit()
+    return {"status": "deleted", "provider": provider.lower()}
+
+
+@app.put("/api-keys/model")
+async def update_stored_model(request: UpdateModelRequest, db: AsyncSession = Depends(get_db)):
+    """Atualiza o modelo selecionado para um provider já salvo."""
+    stmt = select(StoredAPIKey).where(
+        StoredAPIKey.device_id == request.device_id,
+        StoredAPIKey.provider == request.provider.lower(),
+    )
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="API key não encontrada para este provider.")
+
+    existing.model = request.model
+    existing.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {"status": "updated", "provider": request.provider.lower(), "model": request.model}
+
+
+@app.post("/api-keys/models")
+async def list_stored_models(request: StoredModelsRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Lista modelos disponíveis usando uma API key armazenada.
+    Descriptografa a key internamente — nunca a expõe.
+    """
+    stmt = select(StoredAPIKey).where(
+        StoredAPIKey.device_id == request.device_id,
+        StoredAPIKey.provider == request.provider.lower(),
+    )
+    result = await db.execute(stmt)
+    stored = result.scalar_one_or_none()
+
+    if not stored:
+        raise HTTPException(status_code=404, detail="Nenhuma API key salva para este provider.")
+
+    try:
+        api_key = decrypt_api_key(stored.encrypted_key)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao descriptografar a key. Salve novamente.")
+
+    # Reutiliza a lógica de listar modelos
+    return await list_models(ListModelsRequest(provider=request.provider, api_key=api_key))
+
+
+# ──────────────────────────────────────────────
+#  Helpers
+# ──────────────────────────────────────────────
+
+
+async def _resolve_llm_config(raw: Request, db: AsyncSession) -> dict | None:
+    """
+    Resolve a configuração de LLM para uma requisição.
+    Prioridade:
+      1. API key enviada diretamente nos headers (legado/compatibilidade)
+      2. device_id + provider nos headers → busca key criptografada no banco
+      3. None → usa o LLM padrão do servidor
+    """
+    # 1. Key direta nos headers (legado)
+    llm_api_key = raw.headers.get("x-llm-api-key", "").strip()
+    if llm_api_key:
+        return {
+            "provider": raw.headers.get("x-llm-provider", "").strip(),
+            "api_key": llm_api_key,
+            "model": raw.headers.get("x-llm-model", "").strip(),
+        }
+
+    # 2. device_id → busca key armazenada
+    device_id = raw.headers.get("x-device-id", "").strip()
+    llm_provider = raw.headers.get("x-llm-provider", "").strip()
+    if device_id and llm_provider:
+        stmt = select(StoredAPIKey).where(
+            StoredAPIKey.device_id == device_id,
+            StoredAPIKey.provider == llm_provider,
+        )
+        result = await db.execute(stmt)
+        stored = result.scalar_one_or_none()
+        if stored:
+            try:
+                api_key = decrypt_api_key(stored.encrypted_key)
+                return {
+                    "provider": stored.provider,
+                    "api_key": api_key,
+                    "model": raw.headers.get("x-llm-model", "").strip() or stored.model or "",
+                }
+            except Exception:
+                pass  # fallback para LLM padrão
+
+    # 3. Sem config → usa padrão do servidor
+    return None
+
+
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depends(get_db)):
     """
@@ -256,17 +474,8 @@ async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depe
     """
     url = request.url
 
-    # Extrair config de LLM dos headers HTTP (enviados pelo frontend)
-    llm_config: dict | None = None
-    llm_provider = raw.headers.get("x-llm-provider", "").strip()
-    llm_api_key = raw.headers.get("x-llm-api-key", "").strip()
-    llm_model = raw.headers.get("x-llm-model", "").strip()
-    if llm_api_key:
-        llm_config = {
-            "provider": llm_provider,
-            "api_key": llm_api_key,
-            "model": llm_model,
-        }
+    # Resolver configuração de LLM (key criptografada ou padrão)
+    llm_config = await _resolve_llm_config(raw, db)
 
     # 1-2. Coleta e análise de headers
     try:
@@ -365,6 +574,15 @@ async def get_history(
         )
         for a in analyses
     ]
+
+
+@app.delete("/history")
+async def clear_history(db: AsyncSession = Depends(get_db)):
+    """Remove todas as análises do histórico."""
+    stmt = delete(Analysis)
+    result = await db.execute(stmt)
+    await db.commit()
+    return {"status": "cleared", "deleted": result.rowcount}
 
 
 @app.get("/history/{analysis_id}", response_model=HistoryDetailResponse)

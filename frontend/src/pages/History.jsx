@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { History as HistoryIcon, ExternalLink, Globe, Trash2 } from 'lucide-react'
-import { getHistory } from '../lib/api'
+import { History as HistoryIcon, ExternalLink, Globe, Trash2, AlertTriangle } from 'lucide-react'
+import { getHistory, clearHistory } from '../lib/api'
 import { formatDate, cleanUrl, CLASSIFICATION_CONFIG, SEVERITY_CONFIG } from '../lib/utils'
 
 export default function History() {
   const [analyses, setAnalyses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
     getHistory(100)
@@ -15,6 +17,16 @@ export default function History() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleClearHistory() {
+    setClearing(true)
+    try {
+      await clearHistory()
+      setAnalyses([])
+    } catch {}
+    setClearing(false)
+    setConfirmClear(false)
+  }
 
   if (loading) {
     return (
@@ -44,9 +56,39 @@ export default function History() {
           <HistoryIcon className="w-5 h-5 text-primary-400" />
           <h1 className="text-xl font-bold text-surface-100">Histórico de Análises</h1>
         </div>
-        <span className="text-xs text-surface-500">
-          {analyses.length} {analyses.length === 1 ? 'análise' : 'análises'}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-surface-500">
+            {analyses.length} {analyses.length === 1 ? 'análise' : 'análises'}
+          </span>
+          {analyses.length > 0 && !confirmClear && (
+            <button
+              onClick={() => setConfirmClear(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-surface-400 hover:text-red-400 hover:bg-red-500/10 border border-surface-700/40 hover:border-red-500/20 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar
+            </button>
+          )}
+          {confirmClear && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+              <span className="text-xs text-red-300">Apagar tudo?</span>
+              <button
+                onClick={handleClearHistory}
+                disabled={clearing}
+                className="px-2 py-0.5 rounded text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors disabled:opacity-50"
+              >
+                {clearing ? 'Apagando...' : 'Sim'}
+              </button>
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="px-2 py-0.5 rounded text-xs font-medium text-surface-400 hover:text-surface-200 transition-colors"
+              >
+                Não
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {analyses.length === 0 ? (

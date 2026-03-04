@@ -10,3 +10,4 @@ reportlab==4.2.5
 aiosqlite==0.20.0
 greenlet==3.3.2
 pydantic==2.10.4
+cryptography==44.0.3

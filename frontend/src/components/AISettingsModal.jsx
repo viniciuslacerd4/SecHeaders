@@ -1,13 +1,28 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Eye, EyeOff, Sparkles, Check, ChevronDown, RefreshCw, AlertCircle, Zap } from 'lucide-react'
-import { fetchModels, fetchLLMStatus } from '../lib/api'
+import { X, Sparkles, Check, ChevronDown, RefreshCw, AlertCircle, Zap, Trash2, Shield, KeyRound, Save } from 'lucide-react'
+import {
+  fetchLLMStatus,
+  fetchModels,
+  fetchStoredKeys,
+  fetchStoredModels,
+  storeAPIKey,
+  deleteStoredKey,
+  updateStoredModel,
+  getCachedStoredKeys,
+  hasAnyStoredKey,
+  getActiveProvider,
+  setActiveProvider as setActiveProviderAPI,
+} from '../lib/api'
 
 const PROVIDERS = [
   {
     id: 'openai',
     name: 'OpenAI',
     color: 'text-green-400',
+    bg: 'bg-green-500/10',
+    border: 'border-green-500/20',
+    dot: 'bg-green-400',
     defaultModel: 'gpt-4o-mini',
     placeholder: 'sk-...',
   },
@@ -15,6 +30,9 @@ const PROVIDERS = [
     id: 'anthropic',
     name: 'Anthropic',
     color: 'text-orange-400',
+    bg: 'bg-orange-500/10',
+    border: 'border-orange-500/20',
+    dot: 'bg-orange-400',
     defaultModel: 'claude-sonnet-4-20250514',
     placeholder: 'sk-ant-...',
   },
@@ -22,6 +40,9 @@ const PROVIDERS = [
     id: 'gemini',
     name: 'Google Gemini',
     color: 'text-blue-400',
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/20',
+    dot: 'bg-blue-400',
     defaultModel: 'gemini-2.5-flash',
     placeholder: 'AI...',
   },
@@ -29,29 +50,15 @@ const PROVIDERS = [
     id: 'openrouter',
     name: 'OpenRouter',
     color: 'text-purple-400',
+    bg: 'bg-purple-500/10',
+    border: 'border-purple-500/20',
+    dot: 'bg-purple-400',
     defaultModel: 'stepfun/step-3.5-flash:free',
     placeholder: 'sk-or-...',
   },
 ]
 
-const STORAGE_KEY = 'secheaders_llm_config'
 const DEFAULT_LLM_CACHE_KEY = 'secheaders_default_llm'
-
-export function getLLMConfig() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (parsed.apiKey) return parsed
-    return null
-  } catch {
-    return null
-  }
-}
-
-export function isLLMConfigured() {
-  return getLLMConfig() !== null
-}
 
 export function getDefaultLLMStatus() {
   try {
@@ -68,132 +75,75 @@ export function isDefaultLLMAvailable() {
   return status?.available === true
 }
 
-export default function AISettingsModal({ isOpen, onClose }) {
-  const [provider, setProvider] = useState('openai')
-  const [apiKey, setApiKey] = useState('')
-  const [model, setModel] = useState('')
-  const [showKey, setShowKey] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [providerOpen, setProviderOpen] = useState(false)
-  const [modelOpen, setModelOpen] = useState(false)
+export function isLLMConfigured() {
+  return hasAnyStoredKey()
+}
 
-  // Dynamic models state
+export default function AISettingsModal({ isOpen, onClose }) {
+  const [selectedProvider, setSelectedProvider] = useState(null)
+  const [storedKeys, setStoredKeys] = useState(getCachedStoredKeys())
+  const [defaultLLM, setDefaultLLM] = useState(getDefaultLLMStatus())
+
+  // Input state (only when adding new key)
+  const [apiKey, setApiKey] = useState('')
+  const [editingProvider, setEditingProvider] = useState(null)
+
+  // Models state
   const [models, setModels] = useState([])
   const [modelsLoading, setModelsLoading] = useState(false)
   const [modelsError, setModelsError] = useState('')
-  const [modelsLoaded, setModelsLoaded] = useState(false)
+  const [modelOpen, setModelOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState('')
 
-  // Default LLM status
-  const [defaultLLM, setDefaultLLM] = useState(getDefaultLLMStatus())
+  // Actions state
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(null)
+  const [justSaved, setJustSaved] = useState(null)
 
   const modalRef = useRef(null)
-  const dropdownRef = useRef(null)
   const modelDropdownRef = useRef(null)
-  const debounceRef = useRef(null)
 
-  const selectedProvider = PROVIDERS.find((p) => p.id === provider)
+  // ──────────────────────────────────────────────
+  //  Load data on open
+  // ──────────────────────────────────────────────
 
-  // Fetch default LLM status from backend
-  useEffect(() => {
-    if (isOpen && !defaultLLM) {
-      fetchLLMStatus()
-        .then((status) => {
-          setDefaultLLM(status)
-          localStorage.setItem(DEFAULT_LLM_CACHE_KEY, JSON.stringify(status))
-        })
-        .catch(() => {})
-    }
-  }, [isOpen])
-
-  // Fetch models from the API
-  const loadModels = useCallback(
-    async (prov, key) => {
-      if (!key || key.length < 5) {
-        setModels([])
-        setModelsLoaded(false)
-        setModelsError('')
-        return
-      }
-      setModelsLoading(true)
-      setModelsError('')
-      try {
-        const result = await fetchModels(prov, key)
-        setModels(result)
-        setModelsLoaded(true)
-        // If current model isn't in the list, select the first one
-        if (result.length > 0 && !result.includes(model)) {
-          setModel(result[0])
-        }
-      } catch (err) {
-        setModelsError(err.message || 'Erro ao carregar modelos')
-        setModels([])
-        setModelsLoaded(false)
-      } finally {
-        setModelsLoading(false)
-      }
-    },
-    [model],
-  )
-
-  // Load saved config on open
   useEffect(() => {
     if (isOpen) {
-      const config = getLLMConfig()
-      if (config) {
-        setProvider(config.provider || 'openai')
-        setApiKey(config.apiKey || '')
-        setModel(config.model || '')
-      } else {
-        setProvider('openai')
-        setApiKey('')
-        setModel('')
-      }
-      setSaved(false)
-      setShowKey(false)
+      setApiKey('')
+      setEditingProvider(null)
       setModels([])
-      setModelsLoaded(false)
       setModelsError('')
       setModelOpen(false)
+      setJustSaved(null)
+      setSaving(false)
+
+      // Refresh stored keys from backend
+      fetchStoredKeys()
+        .then((keys) => setStoredKeys(keys))
+        .catch(() => setStoredKeys(getCachedStoredKeys()))
+
+      // Refresh default LLM status
+      if (!defaultLLM) {
+        fetchLLMStatus()
+          .then((status) => {
+            setDefaultLLM(status)
+            localStorage.setItem(DEFAULT_LLM_CACHE_KEY, JSON.stringify(status))
+          })
+          .catch(() => {})
+      }
     }
   }, [isOpen])
 
-  // Auto-fetch models when API key is set on open (saved config)
+  // Close on Escape
   useEffect(() => {
-    if (isOpen && apiKey && apiKey.length >= 5) {
-      loadModels(provider, apiKey)
-    }
-  }, [isOpen]) // intentionally only on open
+    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    if (isOpen) document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [isOpen, onClose])
 
-  // Debounced fetch when apiKey changes
-  useEffect(() => {
-    if (!isOpen) return
-    clearTimeout(debounceRef.current)
-    if (apiKey && apiKey.length >= 10) {
-      debounceRef.current = setTimeout(() => {
-        loadModels(provider, apiKey)
-      }, 800)
-    } else {
-      setModels([])
-      setModelsLoaded(false)
-      setModelsError('')
-    }
-    return () => clearTimeout(debounceRef.current)
-  }, [apiKey, provider])
-
-  // Set default model when provider changes (if models not loaded)
-  useEffect(() => {
-    const p = PROVIDERS.find((pr) => pr.id === provider)
-    if (p && !model && !modelsLoaded) {
-      setModel(p.defaultModel)
-    }
-  }, [provider])
-
-  // Close dropdowns on outside click
+  // Close model dropdown on outside click
   useEffect(() => {
     function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setProviderOpen(false)
-      }
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target)) {
         setModelOpen(false)
       }
@@ -202,53 +152,142 @@ export default function AISettingsModal({ isOpen, onClose }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Close modal on Escape
-  useEffect(() => {
-    function handleKey(e) {
-      if (e.key === 'Escape') onClose()
+  // ──────────────────────────────────────────────
+  //  Load models for a saved provider
+  // ──────────────────────────────────────────────
+
+  const loadModelsForSaved = useCallback(async (provId) => {
+    setModelsLoading(true)
+    setModelsError('')
+    try {
+      const result = await fetchStoredModels(provId)
+      setModels(result)
+      const current = storedKeys[provId]?.model
+      if (current && result.includes(current)) {
+        setSelectedModel(current)
+      } else if (result.length > 0) {
+        setSelectedModel(result[0])
+      }
+    } catch (err) {
+      setModelsError(err.message || 'Erro ao carregar modelos')
+      setModels([])
+    } finally {
+      setModelsLoading(false)
     }
-    if (isOpen) document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [isOpen, onClose])
+  }, [storedKeys])
 
-  function handleSave() {
-    const config = { provider, apiKey: apiKey.trim(), model: model.trim() }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
-    setSaved(true)
-    setTimeout(() => {
-      onClose()
-    }, 600)
-  }
+  // When expanding a provider with saved key, load its models
+  useEffect(() => {
+    if (selectedProvider && storedKeys[selectedProvider] && !editingProvider) {
+      setSelectedModel(storedKeys[selectedProvider]?.model || '')
+      loadModelsForSaved(selectedProvider)
+    }
+  }, [selectedProvider])
 
-  function handleClear() {
-    localStorage.removeItem(STORAGE_KEY)
+  // ──────────────────────────────────────────────
+  //  Handlers
+  // ──────────────────────────────────────────────
+
+  function handleProviderClick(provId) {
+    if (selectedProvider === provId && !editingProvider) {
+      setSelectedProvider(null)
+      setModels([])
+      setModelsError('')
+      return
+    }
+    setSelectedProvider(provId)
+    setEditingProvider(null)
     setApiKey('')
-    setModel('')
-    setProvider('openai')
     setModels([])
-    setModelsLoaded(false)
     setModelsError('')
-    setSaved(false)
+    setModelOpen(false)
   }
 
-  function handleProviderChange(id) {
-    setProvider(id)
-    const p = PROVIDERS.find((pr) => pr.id === id)
-    if (p) setModel(p.defaultModel)
-    setProviderOpen(false)
+  function handleStartEditing(provId) {
+    setEditingProvider(provId)
+    setSelectedProvider(provId)
+    setApiKey('')
     setModels([])
-    setModelsLoaded(false)
     setModelsError('')
   }
 
-  function maskKey(key) {
-    if (!key) return ''
-    if (key.length <= 8) return '•'.repeat(key.length)
-    return key.slice(0, 4) + '•'.repeat(Math.min(key.length - 8, 24)) + key.slice(-4)
+  async function handleSaveKey() {
+    const provId = editingProvider || selectedProvider
+    if (!apiKey.trim() || !provId) return
+    setSaving(true)
+    setModelsError('')
+    try {
+      // Primeiro valida buscando modelos
+      const modelsList = await fetchModels(provId, apiKey.trim())
+      const defaultModel = PROVIDERS.find(p => p.id === provId)?.defaultModel || ''
+      const modelToSave = modelsList.includes(defaultModel) ? defaultModel : (modelsList[0] || defaultModel)
+
+      await storeAPIKey(provId, apiKey.trim(), modelToSave)
+
+      // Refresh state
+      const keys = await fetchStoredKeys()
+      setStoredKeys(keys)
+      setEditingProvider(null)
+      setApiKey('')
+      setJustSaved(provId)
+      setModels(modelsList)
+      setSelectedModel(modelToSave)
+
+      setTimeout(() => setJustSaved(null), 2000)
+    } catch (err) {
+      setModelsError(err.message || 'API key inválida ou erro ao salvar')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  // Displayed models: dynamic list if loaded, else empty (user must connect first)
-  const displayModels = modelsLoaded && models.length > 0 ? models : []
+  async function handleDeleteKey(provId) {
+    setDeleting(provId)
+    try {
+      await deleteStoredKey(provId)
+      const keys = await fetchStoredKeys()
+      setStoredKeys(keys)
+      if (selectedProvider === provId) {
+        setSelectedProvider(null)
+        setModels([])
+      }
+    } catch (err) {
+      // silently fail
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  async function handleModelChange(model) {
+    setSelectedModel(model)
+    setModelOpen(false)
+    if (selectedProvider && storedKeys[selectedProvider]) {
+      try {
+        await updateStoredModel(selectedProvider, model)
+        setStoredKeys(prev => ({
+          ...prev,
+          [selectedProvider]: { ...prev[selectedProvider], model }
+        }))
+      } catch {}
+    }
+  }
+
+  function handleSetActive(provId) {
+    setActiveProviderAPI(provId)
+    // Force re-render to update banner
+    setStoredKeys({ ...storedKeys })
+  }
+
+  function handleUseDefault() {
+    localStorage.setItem('secheaders_active_provider', '__default__')
+    setStoredKeys({ ...storedKeys })
+  }
+
+  const activeProvider = getActiveProvider()
+
+  // ──────────────────────────────────────────────
+  //  Render
+  // ──────────────────────────────────────────────
 
   return (
     <AnimatePresence>
@@ -272,7 +311,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
           {/* Modal */}
           <motion.div
             ref={modalRef}
-            className="relative w-full max-w-md bg-surface-900 border border-surface-700/60 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden"
+            className="relative w-full max-w-lg bg-surface-900 border border-surface-700/60 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden max-h-[90vh] flex flex-col"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -282,14 +321,14 @@ export default function AISettingsModal({ isOpen, onClose }) {
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary-400/50 to-transparent" />
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary-600/15 border border-primary-500/20">
                   <Sparkles className="w-5 h-5 text-primary-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-surface-100">Configuração de IA</h2>
-                  <p className="text-xs text-surface-400">Escolha o provider e insira sua API Key</p>
+                  <p className="text-xs text-surface-400">Gerencie seus providers e API keys</p>
                 </div>
               </div>
               <button
@@ -300,10 +339,39 @@ export default function AISettingsModal({ isOpen, onClose }) {
               </button>
             </div>
 
-            {/* Body */}
-            <div className="px-6 pb-6 space-y-5">
-              {/* Default LLM banner */}
-              {defaultLLM?.available && !isLLMConfigured() && (
+            {/* Scrollable body */}
+            <div className="px-6 pb-6 space-y-4 overflow-y-auto flex-1">
+              {/* Active provider banner */}
+              {activeProvider && storedKeys[activeProvider] ? (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex items-start gap-3 p-3.5 rounded-xl ${
+                    PROVIDERS.find(p => p.id === activeProvider)?.bg || 'bg-primary-500/10'
+                  } border ${
+                    PROVIDERS.find(p => p.id === activeProvider)?.border || 'border-primary-500/20'
+                  }`}
+                >
+                  <Sparkles className={`w-5 h-5 shrink-0 mt-0.5 ${
+                    PROVIDERS.find(p => p.id === activeProvider)?.color || 'text-primary-400'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${
+                      PROVIDERS.find(p => p.id === activeProvider)?.color || 'text-primary-300'
+                    }`}>
+                      Usando {PROVIDERS.find(p => p.id === activeProvider)?.name || activeProvider}
+                    </p>
+                    <p className="text-xs text-surface-400 mt-0.5">
+                      Modelo: <span className="text-surface-300 font-mono">{storedKeys[activeProvider]?.model || 'não definido'}</span>
+                    </p>
+                    {defaultLLM?.available && (
+                      <p className="text-xs text-surface-500 mt-1">
+                        A IA padrão do servidor ({defaultLLM.provider}/{defaultLLM.model}) não será utilizada.
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              ) : defaultLLM?.available ? (
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -311,240 +379,277 @@ export default function AISettingsModal({ isOpen, onClose }) {
                 >
                   <Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-emerald-300">IA padrão ativa</p>
+                    <p className="text-sm font-medium text-emerald-300">IA integrada ativa</p>
                     <p className="text-xs text-surface-400 mt-0.5">
-                      O servidor já possui uma IA configurada ({defaultLLM.provider}/{defaultLLM.model}).
+                      O SecHeaders já possui uma IA configurada (<span className="text-surface-300">{defaultLLM.provider}</span> / <span className="text-surface-300 font-mono">{defaultLLM.model}</span>).
                       Você pode analisar sites sem configurar nada!
                     </p>
-                    <p className="text-xs text-surface-500 mt-1">
-                      Opcionalmente, configure sua própria API key abaixo para usar outro modelo.
+                    <p className="text-xs text-surface-500 mt-1.5">
+                      Se preferir, adicione sua própria API key abaixo para usar outro modelo.
                     </p>
                   </div>
                 </motion.div>
-              )}
+              ) : null}
 
-              {defaultLLM?.available && isLLMConfigured() && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 p-2.5 bg-surface-800/60 border border-surface-700/40 rounded-xl"
-                >
-                  <Zap className="w-4 h-4 text-surface-500 shrink-0" />
-                  <p className="text-xs text-surface-500">
-                    Usando sua API key personalizada. Limpe para voltar à IA padrão do servidor.
-                  </p>
-                </motion.div>
-              )}
-
-              {/* Provider select */}
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-2">
-                  Provider
-                </label>
-                <div ref={dropdownRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setProviderOpen(!providerOpen)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-surface-800/80 border border-surface-700/60 rounded-xl text-sm text-surface-100 hover:border-surface-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40"
-                  >
-                    <span className={selectedProvider?.color}>{selectedProvider?.name}</span>
-                    <ChevronDown
-                      className={`w-4 h-4 text-surface-400 transition-transform ${providerOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  <AnimatePresence>
-                    {providerOpen && (
-                      <motion.div
-                        className="absolute top-full left-0 right-0 mt-1 bg-surface-800 border border-surface-700/60 rounded-xl overflow-hidden shadow-xl z-10"
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        {PROVIDERS.map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => handleProviderChange(p.id)}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
-                              provider === p.id
-                                ? 'bg-primary-600/15 text-primary-300'
-                                : 'text-surface-300 hover:bg-surface-700/60 hover:text-surface-100'
-                            }`}
-                          >
-                            <span className={p.color}>{p.name}</span>
-                            {provider === p.id && <Check className="w-4 h-4 text-primary-400" />}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+              {/* Security notice */}
+              <div className="flex items-center gap-2 p-2.5 bg-surface-800/40 border border-surface-700/30 rounded-lg">
+                <Shield className="w-3.5 h-3.5 text-surface-500 shrink-0" />
+                <p className="text-[11px] text-surface-500">
+                  API keys são criptografadas no servidor (AES-256). Nunca são expostas após o salvamento.
+                </p>
               </div>
 
-              {/* API Key */}
-              <div>
-                <label className="block text-sm font-medium text-surface-300 mb-2">
-                  API Key
-                </label>
-                <div className="relative">
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    value={showKey ? apiKey : apiKey ? maskKey(apiKey) : ''}
-                    onChange={(e) => {
-                      setShowKey(true)
-                      setApiKey(e.target.value)
-                    }}
-                    onFocus={() => setShowKey(true)}
-                    placeholder={selectedProvider?.placeholder || 'Cole sua API key aqui...'}
-                    className="w-full px-4 py-3 pr-12 bg-surface-800/80 border border-surface-700/60 rounded-xl text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500/40 transition-all font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey(!showKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-surface-400 hover:text-surface-200 transition-colors"
-                    title={showKey ? 'Ocultar' : 'Mostrar'}
-                  >
-                    {showKey ? (
-                      <EyeOff className="w-4.5 h-4.5" />
-                    ) : (
-                      <Eye className="w-4.5 h-4.5" />
-                    )}
-                  </button>
-                </div>
-                {modelsError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-1.5 mt-2 text-xs text-red-400"
-                  >
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{modelsError}</span>
-                  </motion.div>
-                )}
-              </div>
+              {/* Provider list */}
+              <div className="space-y-2">
+                {PROVIDERS.map((prov) => {
+                  const isSaved = !!storedKeys[prov.id]
+                  const isExpanded = selectedProvider === prov.id
+                  const isEditing = editingProvider === prov.id
+                  const isActive = activeProvider === prov.id
+                  const wasJustSaved = justSaved === prov.id
 
-              {/* Model - Dynamic dropdown */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-sm font-medium text-surface-300">Modelo</label>
-                  {apiKey.length >= 5 && (
-                    <button
-                      type="button"
-                      onClick={() => loadModels(provider, apiKey)}
-                      disabled={modelsLoading}
-                      className="p-0.5 rounded text-surface-400 hover:text-primary-400 transition-colors disabled:opacity-40"
-                      title="Atualizar lista de modelos"
+                  return (
+                    <motion.div
+                      key={prov.id}
+                      layout
+                      className={`rounded-xl border transition-colors ${
+                        isExpanded
+                          ? `${prov.border} ${prov.bg}`
+                          : 'border-surface-800/50 hover:border-surface-700/60'
+                      }`}
                     >
-                      <RefreshCw
-                        className={`w-3.5 h-3.5 ${modelsLoading ? 'animate-spin' : ''}`}
-                      />
-                    </button>
-                  )}
-                </div>
-
-                <div ref={modelDropdownRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (displayModels.length > 0) setModelOpen(!modelOpen)
-                    }}
-                    disabled={displayModels.length === 0}
-                    className={`w-full flex items-center justify-between px-4 py-3 bg-surface-800/80 border border-surface-700/60 rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 ${
-                      displayModels.length === 0
-                        ? 'text-surface-500 cursor-default'
-                        : 'text-surface-100 hover:border-surface-600 cursor-pointer'
-                    }`}
-                  >
-                    <span className={modelsLoading ? 'text-surface-500' : ''}>
-                      {modelsLoading
-                        ? 'Carregando modelos...'
-                        : displayModels.length > 0
-                          ? model || 'Selecione um modelo'
-                          : apiKey.length >= 5
-                            ? 'Conectando...'
-                            : 'Insira a API key para ver os modelos'}
-                    </span>
-                    {displayModels.length > 0 && (
-                      <ChevronDown
-                        className={`w-4 h-4 text-surface-400 transition-transform ${modelOpen ? 'rotate-180' : ''}`}
-                      />
-                    )}
-                    {modelsLoading && (
-                      <RefreshCw className="w-4 h-4 text-surface-400 animate-spin" />
-                    )}
-                  </button>
-
-                  <AnimatePresence>
-                    {modelOpen && displayModels.length > 0 && (
-                      <motion.div
-                        className="absolute bottom-full left-0 right-0 mb-1 bg-surface-800 border border-surface-700/60 rounded-xl overflow-hidden shadow-xl z-10 max-h-64 overflow-y-auto"
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 4 }}
-                        transition={{ duration: 0.15 }}
+                      {/* Provider row */}
+                      <button
+                        onClick={() => handleProviderClick(prov.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left"
                       >
-                        {displayModels.map((m) => (
-                          <button
-                            key={m}
-                            onClick={() => {
-                              setModel(m)
-                              setModelOpen(false)
-                            }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors ${
-                              model === m
-                                ? 'bg-primary-600/15 text-primary-300'
-                                : 'text-surface-300 hover:bg-surface-700/60 hover:text-surface-100'
-                            }`}
+                        <span className={`w-2 h-2 rounded-full ${isSaved ? prov.dot : 'bg-surface-600'}`} />
+                        <span className={`text-sm font-medium flex-1 ${prov.color}`}>
+                          {prov.name}
+                        </span>
+
+                        {isSaved && (
+                          <span className="flex items-center gap-1.5 text-xs text-surface-400">
+                            <KeyRound className="w-3 h-3" />
+                            <span className="font-mono">{storedKeys[prov.id].hint}</span>
+                          </span>
+                        )}
+
+                        {wasJustSaved && (
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex items-center gap-1 text-xs text-green-400"
                           >
-                            <span className="font-mono text-xs">{m}</span>
-                            {model === m && <Check className="w-4 h-4 text-primary-400" />}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                            <Check className="w-3.5 h-3.5" />
+                            Salvo
+                          </motion.span>
+                        )}
 
-                {modelsLoaded && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-1.5 text-xs text-surface-500"
-                  >
-                    {models.length} modelo{models.length !== 1 ? 's' : ''} disponíve{models.length !== 1 ? 'is' : 'l'}
-                  </motion.p>
-                )}
-              </div>
+                        {isActive && isSaved && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-400 bg-primary-500/10 px-1.5 py-0.5 rounded">
+                            Ativo
+                          </span>
+                        )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-1">
-                <button
-                  onClick={handleSave}
-                  disabled={!apiKey.trim() || saved}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                    saved
-                      ? 'bg-green-600/20 text-green-400 border border-green-500/30'
-                      : apiKey.trim()
-                        ? 'bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-600/25 hover:shadow-primary-500/30'
-                        : 'bg-surface-800 text-surface-500 cursor-not-allowed'
-                  }`}
-                >
-                  {saved ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Salvo!
-                    </>
-                  ) : (
-                    'Salvar'
-                  )}
-                </button>
-                <button
-                  onClick={handleClear}
-                  className="px-4 py-3 rounded-xl text-sm font-medium text-surface-400 hover:text-red-400 hover:bg-red-500/10 border border-surface-700/60 hover:border-red-500/30 transition-all"
-                >
-                  Limpar
-                </button>
+                        <ChevronDown
+                          className={`w-4 h-4 text-surface-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+
+                      {/* Expanded content */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1, overflow: 'visible', transitionEnd: { overflow: 'visible' } }}
+                            exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
+                            transition={{ duration: 0.2 }}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            <div className="px-4 pb-4 space-y-3">
+                              {/* SAVED state: show hint + model selector */}
+                              {isSaved && !isEditing && (
+                                <>
+                                  {/* Model selector */}
+                                  <div>
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <label className="text-xs font-medium text-surface-400">Modelo</label>
+                                      <button
+                                        type="button"
+                                        onClick={() => loadModelsForSaved(prov.id)}
+                                        disabled={modelsLoading}
+                                        className="p-0.5 rounded text-surface-500 hover:text-primary-400 transition-colors disabled:opacity-40"
+                                        title="Atualizar modelos"
+                                      >
+                                        <RefreshCw className={`w-3 h-3 ${modelsLoading ? 'animate-spin' : ''}`} />
+                                      </button>
+                                    </div>
+
+                                    <div ref={modelDropdownRef} className="relative">
+                                      <button
+                                        type="button"
+                                        onClick={() => models.length > 0 && setModelOpen(!modelOpen)}
+                                        className={`w-full flex items-center justify-between px-3 py-2 bg-surface-950/50 border border-surface-700/40 rounded-lg text-xs transition-colors ${
+                                          models.length > 0 ? 'cursor-pointer hover:border-surface-600' : 'cursor-default text-surface-500'
+                                        }`}
+                                      >
+                                        <span className="font-mono truncate">
+                                          {modelsLoading ? 'Carregando...' : selectedModel || storedKeys[prov.id]?.model || 'Carregando...'}
+                                        </span>
+                                        {models.length > 0 && (
+                                          <ChevronDown className={`w-3.5 h-3.5 text-surface-500 transition-transform ${modelOpen ? 'rotate-180' : ''}`} />
+                                        )}
+                                        {modelsLoading && <RefreshCw className="w-3.5 h-3.5 text-surface-400 animate-spin" />}
+                                      </button>
+
+                                      <AnimatePresence>
+                                        {modelOpen && models.length > 0 && (
+                                          <motion.div
+                                            className="absolute top-full left-0 right-0 mt-1 bg-surface-800 border border-surface-700/60 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto"
+                                            initial={{ opacity: 0, y: -4 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -4 }}
+                                            transition={{ duration: 0.15 }}
+                                          >
+                                            {models.map((m) => (
+                                              <button
+                                                key={m}
+                                                onClick={() => handleModelChange(m)}
+                                                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
+                                                  selectedModel === m
+                                                    ? 'bg-primary-600/15 text-primary-300'
+                                                    : 'text-surface-300 hover:bg-surface-700/60'
+                                                }`}
+                                              >
+                                                <span className="font-mono truncate">{m}</span>
+                                                {selectedModel === m && <Check className="w-3.5 h-3.5 text-primary-400 shrink-0" />}
+                                              </button>
+                                            ))}
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
+
+                                    {models.length > 0 && (
+                                      <p className="mt-1 text-[11px] text-surface-500">
+                                        {models.length} modelo{models.length !== 1 ? 's' : ''} disponíve{models.length !== 1 ? 'is' : 'l'}
+                                      </p>
+                                    )}
+
+                                    {modelsError && (
+                                      <div className="flex items-center gap-1.5 mt-1.5 text-xs text-red-400">
+                                        <AlertCircle className="w-3 h-3 shrink-0" />
+                                        <span>{modelsError}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Actions for saved provider */}
+                                  <div className="flex items-center gap-2 pt-1">
+                                    {!isActive ? (
+                                      <button
+                                        onClick={() => handleSetActive(prov.id)}
+                                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary-600/15 text-primary-300 hover:bg-primary-600/25 border border-primary-500/20 transition-colors"
+                                      >
+                                        <Zap className="w-3.5 h-3.5" />
+                                        Usar este provider
+                                      </button>
+                                    ) : defaultLLM?.available ? (
+                                      <button
+                                        onClick={handleUseDefault}
+                                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+                                      >
+                                        <Zap className="w-3.5 h-3.5" />
+                                        Voltar à IA padrão
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      onClick={() => handleStartEditing(prov.id)}
+                                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-800 border border-surface-700/40 transition-colors"
+                                    >
+                                      <KeyRound className="w-3.5 h-3.5" />
+                                      Trocar key
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteKey(prov.id)}
+                                      disabled={deleting === prov.id}
+                                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-red-400 hover:bg-red-500/10 border border-surface-700/40 hover:border-red-500/20 transition-colors disabled:opacity-40"
+                                    >
+                                      <Trash2 className={`w-3.5 h-3.5 ${deleting === prov.id ? 'animate-spin' : ''}`} />
+                                      Remover
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+
+                              {/* EDITING/NEW state: input field */}
+                              {(!isSaved || isEditing) && (
+                                <>
+                                  <div>
+                                    <label className="block text-xs font-medium text-surface-400 mb-1.5">
+                                      {isEditing ? 'Nova API Key' : 'API Key'}
+                                    </label>
+                                    <input
+                                      type="password"
+                                      value={apiKey}
+                                      onChange={(e) => setApiKey(e.target.value)}
+                                      placeholder={prov.placeholder || 'Cole sua API key aqui...'}
+                                      className="w-full px-3 py-2.5 bg-surface-950/50 border border-surface-700/40 rounded-lg text-sm text-surface-100 placeholder:text-surface-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 transition-all font-mono"
+                                      autoFocus
+                                    />
+                                    <p className="mt-1 text-[11px] text-surface-500">
+                                      A key será criptografada e nunca mais poderá ser visualizada.
+                                    </p>
+                                  </div>
+
+                                  {modelsError && (
+                                    <div className="flex items-center gap-1.5 text-xs text-red-400">
+                                      <AlertCircle className="w-3 h-3 shrink-0" />
+                                      <span>{modelsError}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={handleSaveKey}
+                                      disabled={!apiKey.trim() || apiKey.trim().length < 5 || saving}
+                                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
+                                        apiKey.trim().length >= 5
+                                          ? 'bg-primary-600 hover:bg-primary-500 text-white'
+                                          : 'bg-surface-800 text-surface-500 cursor-not-allowed'
+                                      }`}
+                                    >
+                                      {saving ? (
+                                        <>
+                                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                          Validando e salvando...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Save className="w-3.5 h-3.5" />
+                                          Salvar key
+                                        </>
+                                      )}
+                                    </button>
+                                    {isEditing && (
+                                      <button
+                                        onClick={() => { setEditingProvider(null); setApiKey(''); setModelsError('') }}
+                                        className="px-3 py-2.5 rounded-lg text-xs font-medium text-surface-400 hover:text-surface-200 border border-surface-700/40 transition-colors"
+                                      >
+                                        Cancelar
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )
+                })}
               </div>
             </div>
           </motion.div>

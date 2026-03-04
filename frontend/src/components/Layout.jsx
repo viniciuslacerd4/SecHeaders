@@ -79,13 +79,8 @@ export default function Layout() {
               >
                 <div className="relative">
                   <Sparkles className="w-4 h-4 transition-transform group-hover:scale-110" />
-                  {(configured || hasDefaultLLM) && (
-                    <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-surface-950 ${
-                      configured ? 'bg-green-400' : 'bg-emerald-400/70'
-                    }`} />
-                  )}
                 </div>
-                <span className="hidden sm:inline">{configured ? 'IA' : hasDefaultLLM ? 'IA' : 'IA'}</span>
+                <span className="hidden sm:inline">IA</span>
               </button>
             </div>
           </div>
