@@ -1,0 +1,32 @@
+services:
+  backend:
+    build: ./backend
+    container_name: secheaders-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app          # hot reload do código
+      - backend-data:/app/data  # persistência do SQLite
+    env_file:
+      - ./backend/.env          # variáveis de ambiente (LLM_PROVIDER, LLM_API_KEY, etc.)
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/secheaders.db
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: secheaders-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app          # hot reload do código
+      - /app/node_modules        # preserva node_modules do container
+    environment:
+      - VITE_API_PROXY_TARGET=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-data:
