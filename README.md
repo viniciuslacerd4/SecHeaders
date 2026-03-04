@@ -50,19 +50,23 @@ Ferramentas existentes como o `securityheaders.com` identificam problemas mas n�
 
 ```
 secheaders/
+├── docker-compose.yml          # Orquestração dos containers
 ├── backend/
-│   ├── main.py               # Entrypoint FastAPI
-│   ├── analyzer.py           # Lógica de análise de headers
-│   ├── scorer.py             # Cálculo do score de segurança
-│   ├── llm.py                # Integração com LLM
-│   ├── pdf_export.py         # Geração de PDF
-│   ├── database.py           # Configuração SQLite
-│   ├── models.py             # Modelos do banco
+│   ├── Dockerfile              # Imagem Python do backend
+│   ├── main.py                 # Entrypoint FastAPI
+│   ├── analyzer.py             # Lógica de análise de headers
+│   ├── scorer.py               # Cálculo do score de segurança
+│   ├── llm.py                  # Integração com LLM (OpenAI/Anthropic/Gemini)
+│   ├── pdf_export.py           # Geração de PDF com ReportLab
+│   ├── database.py             # Configuração SQLite + SQLAlchemy
+│   ├── models.py               # Modelos do banco
 │   └── requirements.txt
 ├── frontend/
+│   ├── Dockerfile              # Imagem Node do frontend
 │   ├── src/
-│   │   ├── components/       # Componentes reutilizáveis
-│   │   ├── pages/            # Páginas da aplicação
+│   │   ├── components/         # Componentes reutilizáveis
+│   │   ├── pages/              # Páginas da aplicação
+│   │   ├── lib/                # Utilitários e API client
 │   │   ├── App.jsx
 │   │   └── main.jsx
 │   └── package.json
@@ -80,25 +84,19 @@ Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose instalados.
 ```bash
 git clone https://github.com/seu-usuario/secheaders.git
 cd secheaders
-```
-
-Crie o arquivo de variáveis do backend (opcional — a API Key pode ser configurada pela interface):
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-Suba os containers:
-
-```bash
 docker compose up -d --build
 ```
+
+Pronto. Acesse:
 
 | Serviço  | URL                        |
 | -------- | -------------------------- |
 | Frontend | http://localhost:5173      |
 | Backend  | http://localhost:8000      |
 | API Docs | http://localhost:8000/docs |
+
+> **Nota:** Não é necessário configurar nenhum arquivo `.env` para começar.
+> A chave de API da IA é configurada diretamente pela interface (veja a seção _Como a IA é utilizada_).
 
 Para parar:
 
@@ -108,71 +106,34 @@ docker compose down
 
 ---
 
-### Opção 2 — Manual
+### Opção 2 — Manual (sem Docker)
 
 #### Pré-requisitos
 
 - Python 3.11+
 - Node.js 18+
-- Conta na [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com) ou [Google AI](https://aistudio.google.com) para obter uma API Key
 
----
-
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/seu-usuario/secheaders.git
-cd secheaders
-```
-
-### 2. Configure o Backend
+#### Backend
 
 ```bash
 cd backend
-
-# Crie e ative o ambiente virtual
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-
-# Instale as dependências
 pip install -r requirements.txt
-
-# Crie o arquivo de variáveis de ambiente
-cp .env.example .env
-```
-
-Edite o arquivo `.env` com sua API Key:
-
-```env
-LLM_API_KEY=sua_chave_aqui
-LLM_PROVIDER=openai  # ou anthropic
-```
-
-Inicie o servidor:
-
-```bash
 uvicorn main:app --reload
 ```
 
-O backend estará disponível em `http://localhost:8000`.
-Documentação automática da API em `http://localhost:8000/docs`.
+Backend disponível em `http://localhost:8000`.
 
----
-
-### 3. Configure o Frontend
+#### Frontend
 
 ```bash
 cd frontend
-
-# Instale as dependências
 npm install
-
-# Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-O frontend estará disponível em `http://localhost:5173`.
+Frontend disponível em `http://localhost:5173`.
 
 ---
 
@@ -218,17 +179,27 @@ curl -X POST http://localhost:8000/analyze \
 
 ## 🧠 Como a IA é utilizada
 
-O SecHeaders utiliza LLM (GPT ou Claude) via API para gerar explicações contextualizadas sobre cada problema encontrado. Para cada header com misconfiguration, o modelo recebe:
+O SecHeaders suporta **3 providers de LLM**: OpenAI (GPT), Anthropic (Claude) e Google (Gemini).
 
-- Nome do header
-- Problema identificado
-- Nível de severidade
+A configuração é feita **pela própria interface**, sem necessidade de editar arquivos:
 
-E retorna em português:
+1. Clique no ícone de engrenagem (⚙️) no canto superior direito
+2. Selecione o provider (OpenAI, Anthropic ou Gemini)
+3. Cole sua API Key
+4. Escolha o modelo desejado
+5. Salve — a configuração fica armazenada no navegador (localStorage)
 
-1. O que é esse header
-2. Qual o risco real do problema encontrado
-3. Como corrigir
+Para cada header com problema, a IA gera uma análise estruturada com **5 seções**:
+
+1. **O que é este header** — explicação didática
+2. **Risco real** — impacto concreto da vulnerabilidade
+3. **Exemplos de ataque** — comandos reproduzíveis em ambiente controlado
+4. **Como corrigir** — configurações para Nginx, Apache, etc.
+5. **Teste de validação** — comandos para o Blue Team verificar a correção
+
+Além disso, gera um **Relatório Executivo** com visão geral, vulnerabilidades críticas, superfície de ataque e plano de correção priorizado.
+
+> Se nenhuma API Key for configurada, a análise de headers e o score funcionam normalmente — apenas as explicações de IA não são geradas.
 
 ---
 
