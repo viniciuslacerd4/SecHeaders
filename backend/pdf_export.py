@@ -177,6 +177,131 @@ def _format_inline_markdown(text: str) -> str:
     return text
 
 
+def _draw_shield_icon(canvas, cx, cy, size):
+    """
+    Desenha o ícone do escudo SecHeaders (shield + </>) em miniatura.
+    cx, cy = centro do ícone; size = altura total.
+    Usa as mesmas curvas do SVG original da logo.
+    """
+    sc = size / 512.0
+    ox = cx - size / 2
+    oy = cy - size / 2
+
+    def tx(x):
+        return x * sc + ox
+
+    def ty(y):
+        return (512 - y) * sc + oy
+
+    # ── Shield body (preenchido com gradiente simulado) ──
+    # Cor sólida indigo como base
+    canvas.setFillColor(colors.Color(0.39, 0.40, 0.95))   # #6366f1
+    canvas.setStrokeColor(colors.Color(0.65, 0.70, 0.98))  # #a5b4fc
+    canvas.setLineWidth(1.5 * sc)
+    p = canvas.beginPath()
+    p.moveTo(tx(256), ty(32))
+    p.curveTo(tx(296), ty(52), tx(356), ty(72), tx(432), ty(72))
+    p.curveTo(tx(442), ty(72), tx(450), ty(80), tx(450), ty(90))
+    p.lineTo(tx(450), ty(260))
+    p.curveTo(tx(450), ty(372), tx(370), ty(440), tx(262), ty(480))
+    p.curveTo(tx(258), ty(482), tx(254), ty(482), tx(250), ty(480))
+    p.curveTo(tx(142), ty(440), tx(62), ty(372), tx(62), ty(260))
+    p.lineTo(tx(62), ty(90))
+    p.curveTo(tx(62), ty(80), tx(70), ty(72), tx(80), ty(72))
+    p.curveTo(tx(156), ty(72), tx(216), ty(52), tx(256), ty(32))
+    p.close()
+    canvas.drawPath(p, stroke=1, fill=1)
+
+    # ── Code symbols </> (branco) ──
+    canvas.setStrokeColor(colors.Color(0.88, 0.91, 1.0))  # #e0e7ff
+    canvas.setLineCap(1)   # Round
+    canvas.setLineJoin(1)  # Round
+
+    # < left bracket
+    canvas.setLineWidth(26 * sc)
+    p = canvas.beginPath()
+    p.moveTo(tx(194), ty(200))
+    p.lineTo(tx(128), ty(260))
+    p.lineTo(tx(194), ty(320))
+    canvas.drawPath(p, stroke=1, fill=0)
+
+    # / slash
+    canvas.setLineWidth(20 * sc)
+    canvas.setStrokeAlpha(0.7)
+    p = canvas.beginPath()
+    p.moveTo(tx(280), ty(180))
+    p.lineTo(tx(232), ty(340))
+    canvas.drawPath(p, stroke=1, fill=0)
+    canvas.setStrokeAlpha(1.0)
+
+    # > right bracket
+    canvas.setLineWidth(26 * sc)
+    p = canvas.beginPath()
+    p.moveTo(tx(318), ty(200))
+    p.lineTo(tx(384), ty(260))
+    p.lineTo(tx(318), ty(320))
+    canvas.drawPath(p, stroke=1, fill=0)
+
+
+def _draw_header_footer(canvas, doc):
+    """
+    Desenha cabeçalho e rodapé em cada página do PDF.
+
+    Cabeçalho: logo (escudo) + "SecHeaders" à esquerda, linha separadora.
+    Rodapé:    "Relatório gerado via SecHeaders" centralizado + nº página.
+    """
+    canvas.saveState()
+    page_w, page_h = A4
+    margin_x = 20 * mm
+
+    # ════════════ HEADER ════════════
+    header_y = page_h - 16 * mm
+    icon_size = 18
+
+    # Escudo mini
+    _draw_shield_icon(canvas, margin_x + icon_size / 2, header_y, icon_size)
+
+    # Texto "SecHeaders" ao lado do ícone
+    canvas.setFont("Helvetica-Bold", 10)
+    canvas.setFillColor(colors.Color(0.2, 0.2, 0.25))
+    canvas.drawString(margin_x + icon_size + 5, header_y - 3.5, "SecHeaders")
+
+    # Linha fina separadora
+    canvas.setStrokeColor(colors.Color(0.82, 0.82, 0.88))
+    canvas.setLineWidth(0.5)
+    line_y = header_y - icon_size / 2 - 3
+    canvas.line(margin_x, line_y, page_w - margin_x, line_y)
+
+    # ════════════ FOOTER ════════════
+    footer_y = 12 * mm
+
+    # Linha fina separadora
+    canvas.setStrokeColor(colors.Color(0.82, 0.82, 0.88))
+    canvas.setLineWidth(0.5)
+    canvas.line(margin_x, footer_y + 6, page_w - margin_x, footer_y + 6)
+
+    # Escudo mini no rodapé
+    footer_icon_size = 12
+    label = "Relatório gerado via SecHeaders"
+    canvas.setFont("Helvetica", 7.5)
+    text_w = canvas.stringWidth(label, "Helvetica", 7.5)
+    total_w = footer_icon_size + 4 + text_w
+    start_x = (page_w - total_w) / 2
+
+    _draw_shield_icon(canvas, start_x + footer_icon_size / 2, footer_y - 1, footer_icon_size)
+
+    canvas.setFillColor(colors.Color(0.45, 0.45, 0.5))
+    canvas.drawString(start_x + footer_icon_size + 4, footer_y - 4, label)
+
+    # Número da página à direita
+    page_num = canvas.getPageNumber()
+    canvas.setFont("Helvetica", 7)
+    canvas.setFillColor(colors.Color(0.55, 0.55, 0.6))
+    canvas.drawRightString(page_w - margin_x, footer_y - 4, f"Página {page_num}")
+
+    canvas.restoreState()
+
+
 def generate_pdf(analysis_data: dict) -> bytes:
     """
     Gera o PDF do relatório de análise.
@@ -271,7 +396,7 @@ def generate_pdf(analysis_data: dict) -> bytes:
     elements = []
 
     # ── Cabeçalho ──
-    elements.append(Paragraph("SecHeaders — Relatório de Segurança", title_style))
+    elements.append(Paragraph("Relatório de Análise de Security Headers", title_style))
     elements.append(
         Paragraph(
             f"Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
@@ -390,7 +515,7 @@ def generate_pdf(analysis_data: dict) -> bytes:
         )
     )
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=_draw_header_footer, onLaterPages=_draw_header_footer)
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
