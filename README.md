@@ -71,13 +71,50 @@ secheaders/
 
 ---
 
-## ⚙️ Como Rodar Localmente
+## ⚙️ Como Rodar
 
-### Pré-requisitos
+### Opção 1 — Docker (recomendado)
+
+Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose instalados.
+
+```bash
+git clone https://github.com/seu-usuario/secheaders.git
+cd secheaders
+```
+
+Crie o arquivo de variáveis do backend (opcional — a API Key pode ser configurada pela interface):
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Suba os containers:
+
+```bash
+docker compose up -d --build
+```
+
+| Serviço  | URL                        |
+| -------- | -------------------------- |
+| Frontend | http://localhost:5173      |
+| Backend  | http://localhost:8000      |
+| API Docs | http://localhost:8000/docs |
+
+Para parar:
+
+```bash
+docker compose down
+```
+
+---
+
+### Opção 2 — Manual
+
+#### Pré-requisitos
 
 - Python 3.11+
 - Node.js 18+
-- Conta na [OpenAI](https://platform.openai.com) ou [Anthropic](https://console.anthropic.com) para obter uma API Key
+- Conta na [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com) ou [Google AI](https://aistudio.google.com) para obter uma API Key
 
 ---
 
