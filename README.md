@@ -267,7 +267,7 @@ Este projeto foi desenvolvido como TCC I do curso de **Sistemas de Informação*
 **Aluno:** Vinicius Lacerda Borges  
 **Orientador:** Jhonatta Pietro de Oliveira  
 **Instituição:** Centro Universitário Paraíso — UniFAP  
-**Período:** 2026.1 (TCC I)
+**Período:** 2026.1
 
 ---
 
