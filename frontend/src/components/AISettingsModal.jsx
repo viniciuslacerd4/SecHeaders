@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Eye, EyeOff, Sparkles, Check, ChevronDown, RefreshCw, AlertCircle } from 'lucide-react'
-import { fetchModels } from '../lib/api'
+import { X, Eye, EyeOff, Sparkles, Check, ChevronDown, RefreshCw, AlertCircle, Zap } from 'lucide-react'
+import { fetchModels, fetchLLMStatus } from '../lib/api'
 
 const PROVIDERS = [
   {
@@ -25,9 +25,17 @@ const PROVIDERS = [
     defaultModel: 'gemini-2.5-flash',
     placeholder: 'AI...',
   },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    color: 'text-purple-400',
+    defaultModel: 'stepfun/step-3.5-flash:free',
+    placeholder: 'sk-or-...',
+  },
 ]
 
 const STORAGE_KEY = 'secheaders_llm_config'
+const DEFAULT_LLM_CACHE_KEY = 'secheaders_default_llm'
 
 export function getLLMConfig() {
   try {
@@ -45,6 +53,21 @@ export function isLLMConfigured() {
   return getLLMConfig() !== null
 }
 
+export function getDefaultLLMStatus() {
+  try {
+    const raw = localStorage.getItem(DEFAULT_LLM_CACHE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+export function isDefaultLLMAvailable() {
+  const status = getDefaultLLMStatus()
+  return status?.available === true
+}
+
 export default function AISettingsModal({ isOpen, onClose }) {
   const [provider, setProvider] = useState('openai')
   const [apiKey, setApiKey] = useState('')
@@ -60,12 +83,27 @@ export default function AISettingsModal({ isOpen, onClose }) {
   const [modelsError, setModelsError] = useState('')
   const [modelsLoaded, setModelsLoaded] = useState(false)
 
+  // Default LLM status
+  const [defaultLLM, setDefaultLLM] = useState(getDefaultLLMStatus())
+
   const modalRef = useRef(null)
   const dropdownRef = useRef(null)
   const modelDropdownRef = useRef(null)
   const debounceRef = useRef(null)
 
   const selectedProvider = PROVIDERS.find((p) => p.id === provider)
+
+  // Fetch default LLM status from backend
+  useEffect(() => {
+    if (isOpen && !defaultLLM) {
+      fetchLLMStatus()
+        .then((status) => {
+          setDefaultLLM(status)
+          localStorage.setItem(DEFAULT_LLM_CACHE_KEY, JSON.stringify(status))
+        })
+        .catch(() => {})
+    }
+  }, [isOpen])
 
   // Fetch models from the API
   const loadModels = useCallback(
@@ -264,6 +302,40 @@ export default function AISettingsModal({ isOpen, onClose }) {
 
             {/* Body */}
             <div className="px-6 pb-6 space-y-5">
+              {/* Default LLM banner */}
+              {defaultLLM?.available && !isLLMConfigured() && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-start gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
+                >
+                  <Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-emerald-300">IA padrão ativa</p>
+                    <p className="text-xs text-surface-400 mt-0.5">
+                      O servidor já possui uma IA configurada ({defaultLLM.provider}/{defaultLLM.model}).
+                      Você pode analisar sites sem configurar nada!
+                    </p>
+                    <p className="text-xs text-surface-500 mt-1">
+                      Opcionalmente, configure sua própria API key abaixo para usar outro modelo.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {defaultLLM?.available && isLLMConfigured() && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 p-2.5 bg-surface-800/60 border border-surface-700/40 rounded-xl"
+                >
+                  <Zap className="w-4 h-4 text-surface-500 shrink-0" />
+                  <p className="text-xs text-surface-500">
+                    Usando sua API key personalizada. Limpe para voltar à IA padrão do servidor.
+                  </p>
+                </motion.div>
+              )}
+
               {/* Provider select */}
               <div>
                 <label className="block text-sm font-medium text-surface-300 mb-2">

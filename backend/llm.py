@@ -1,8 +1,11 @@
 """
-llm.py — Integração com LLM (OpenAI / Anthropic / Google Gemini).
+llm.py — Integração com LLM (OpenAI / Anthropic / Google Gemini / OpenRouter).
 
 Gera explicações em linguagem natural para cada problema
 encontrado nos security headers, e um resumo geral da análise.
+
+O provider padrão é OpenRouter com o modelo stepfun/step-3.5-flash:free,
+permitindo que usuários usem a aplicação sem precisar configurar sua própria API key.
 """
 
 from __future__ import annotations
@@ -10,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+from datetime import datetime
 from functools import lru_cache
 from typing import Literal
 
@@ -17,9 +21,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").lower()
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+LLM_MODEL = os.getenv("LLM_MODEL", "stepfun/step-3.5-flash:free")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+_PLACEHOLDER_KEYS = {"your-api-key-here", "your-openrouter-api-key-here"}
 
 # ──────────────────────────────────────────────
 #  Cache simples em memória
@@ -86,6 +93,7 @@ SUMMARY_PROMPT = """Você é um especialista sênior em segurança web e consult
 Gere um relatório executivo COMPLETO e DIDÁTICO em português brasileiro.
 
 URL analisada: {url}
+Data da análise: {analysis_date}
 Score de segurança: {score}/100 ({classification})
 
 Headers analisados:
@@ -167,6 +175,26 @@ async def _call_gemini(prompt: str, api_key: str = "", model: str = "") -> str:
     return response.text.strip()
 
 
+async def _call_openrouter(prompt: str, api_key: str = "", model: str = "") -> str:
+    """Chama a API do OpenRouter (compatível com OpenAI)."""
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(
+        api_key=api_key or LLM_API_KEY,
+        base_url=OPENROUTER_BASE_URL,
+    )
+    response = await client.chat.completions.create(
+        model=model or LLM_MODEL,
+        messages=[
+            {"role": "system", "content": "Você é um especialista sênior em segurança web, pentesting e cybersecurity com mais de 15 anos de experiência. Você gera relatórios detalhados, didáticos e práticos para times de segurança (Blue Team). Sempre use blocos de código com a linguagem especificada para exemplos técnicos."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.4,
+        max_tokens=3000,
+    )
+    return response.choices[0].message.content.strip()
+
+
 async def _call_llm(prompt: str, provider: str = "", api_key: str = "", model: str = "") -> str:
     """Roteador: chama o provider correto."""
     p = (provider or LLM_PROVIDER).lower()
@@ -174,8 +202,26 @@ async def _call_llm(prompt: str, provider: str = "", api_key: str = "", model: s
         return await _call_anthropic(prompt, api_key, model)
     elif p == "gemini":
         return await _call_gemini(prompt, api_key, model)
+    elif p == "openrouter":
+        return await _call_openrouter(prompt, api_key, model)
     else:
         return await _call_openai(prompt, api_key, model)
+
+
+def has_default_llm() -> bool:
+    """Verifica se existe um LLM padrão configurado via variáveis de ambiente."""
+    return bool(LLM_API_KEY and LLM_API_KEY not in _PLACEHOLDER_KEYS)
+
+
+def get_default_llm_info() -> dict:
+    """Retorna informações sobre o LLM padrão configurado."""
+    if not has_default_llm():
+        return {"available": False}
+    return {
+        "available": True,
+        "provider": LLM_PROVIDER,
+        "model": LLM_MODEL,
+    }
 
 
 # ──────────────────────────────────────────────
@@ -204,7 +250,7 @@ async def explain_header(
     cfg = llm_config or {}
     effective_key = cfg.get("api_key") or LLM_API_KEY
 
-    if not effective_key or effective_key == "your-api-key-here":
+    if not effective_key or effective_key in _PLACEHOLDER_KEYS:
         return _fallback_explanation(header_name, issues, severity)
 
     key = _cache_key(header_name, issues, severity)
@@ -245,7 +291,7 @@ async def generate_summary(
     cfg = llm_config or {}
     effective_key = cfg.get("api_key") or LLM_API_KEY
 
-    if not effective_key or effective_key == "your-api-key-here":
+    if not effective_key or effective_key in _PLACEHOLDER_KEYS:
         return _fallback_summary(url, score, classification, headers_data)
 
     # Monta resumo dos headers para o prompt
@@ -262,6 +308,7 @@ async def generate_summary(
 
     prompt = SUMMARY_PROMPT.format(
         url=url,
+        analysis_date=datetime.now().strftime("%d/%m/%Y %H:%M"),
         score=round(score, 1),
         classification=classification,
         headers_summary=headers_summary,

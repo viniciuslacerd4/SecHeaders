@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from analyzer import analyze_url, AnalysisResult
 from database import init_db, get_db
-from llm import explain_all_headers, generate_summary
+from llm import explain_all_headers, generate_summary, has_default_llm, get_default_llm_info
 from models import Analysis
 from pdf_export import generate_pdf
 from scorer import calculate_score, ScoreResult
@@ -137,6 +137,12 @@ async def healthcheck():
     return {"status": "ok", "service": "SecHeaders API"}
 
 
+@app.get("/llm-status")
+async def llm_status():
+    """Retorna se existe um LLM padrão configurado no servidor."""
+    return get_default_llm_info()
+
+
 @app.post("/models")
 async def list_models(request: ListModelsRequest):
     """
@@ -203,6 +209,23 @@ async def list_models(request: ListModelsRequest):
                 ],
                 key=lambda x: x,
             )
+            return {"models": models}
+
+        elif provider == "openrouter":
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(
+                api_key=api_key,
+                base_url="https://openrouter.ai/api/v1",
+            )
+            response = await client.models.list()
+            models = sorted(
+                [m.id for m in response.data if ":free" in m.id or "step" in m.id.lower()],
+                key=lambda x: x,
+            )
+            # Se a lista ficar vazia, retorna todos
+            if not models:
+                models = sorted([m.id for m in response.data], key=lambda x: x)
             return {"models": models}
 
         else:

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { Home, History, GitCompareArrows, Sparkles } from 'lucide-react'
-import AISettingsModal, { isLLMConfigured } from './AISettingsModal'
+import AISettingsModal, { isLLMConfigured, isDefaultLLMAvailable } from './AISettingsModal'
+import { fetchLLMStatus } from '../lib/api'
 import Logo from './Logo'
 
 const NAV_ITEMS = [
@@ -13,6 +14,17 @@ const NAV_ITEMS = [
 export default function Layout() {
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const configured = isLLMConfigured()
+  const [hasDefaultLLM, setHasDefaultLLM] = useState(isDefaultLLMAvailable())
+
+  // Fetch default LLM status on mount
+  useEffect(() => {
+    fetchLLMStatus()
+      .then((status) => {
+        localStorage.setItem('secheaders_default_llm', JSON.stringify(status))
+        setHasDefaultLLM(status?.available === true)
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="min-h-screen bg-grid">
@@ -67,11 +79,13 @@ export default function Layout() {
               >
                 <div className="relative">
                   <Sparkles className="w-4 h-4 transition-transform group-hover:scale-110" />
-                  {configured && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full ring-2 ring-surface-950" />
+                  {(configured || hasDefaultLLM) && (
+                    <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-surface-950 ${
+                      configured ? 'bg-green-400' : 'bg-emerald-400/70'
+                    }`} />
                   )}
                 </div>
-                <span className="hidden sm:inline">IA</span>
+                <span className="hidden sm:inline">{configured ? 'IA' : hasDefaultLLM ? 'IA' : 'IA'}</span>
               </button>
             </div>
           </div>
