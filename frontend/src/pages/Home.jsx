@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Search, ArrowRight, Globe, Zap, FileText } from 'lucide-react'
 import { analyzeUrl } from '../lib/api'
-import Logo from '../components/Logo'
 
 export default function Home() {
   const [url, setUrl] = useState('')
@@ -37,11 +36,6 @@ export default function Home() {
         transition={{ duration: 0.5 }}
         className="text-center max-w-2xl mx-auto"
       >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-300 text-xs font-medium mb-6">
-          <Logo className="w-4 h-4" />
-          Análise de Security Headers com IA
-        </div>
-
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] mb-4">
           <span className="text-surface-100">Analise a segurança</span>
           <br />
