@@ -14,7 +14,7 @@ export default function History() {
   useEffect(() => {
     getHistory(100)
       .then(setAnalyses)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false))
   }, [])
 
@@ -23,14 +23,14 @@ export default function History() {
     try {
       await clearHistory()
       setAnalyses([])
-    } catch {}
+    } catch { }
     setClearing(false)
     setConfirmClear(false)
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 flex-1">
         <div className="flex items-center gap-3">
           <HistoryIcon className="w-5 h-5 text-primary-400" />
           <h1 className="text-xl font-bold text-surface-100">Histórico de Análises</h1>
@@ -49,9 +49,9 @@ export default function History() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6"
+      className="space-y-6 flex-1"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <HistoryIcon className="w-5 h-5 text-primary-400" />
           <h1 className="text-xl font-bold text-surface-100">Histórico de Análises</h1>

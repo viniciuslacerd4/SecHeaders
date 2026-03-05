@@ -34,6 +34,8 @@ const SECTION_CONFIG = {
   'Exemplos de ataque': { icon: Crosshair, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
   'Como corrigir': { icon: Wrench, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
   'Teste de validação': { icon: FlaskConical, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  'Tudo certo': { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  'Se não estivesse configurado': { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
 }
 
 /**
@@ -215,9 +217,8 @@ export default function HeaderCard({ header, explanation }) {
 
   return (
     <div
-      className={`rounded-xl border transition-all duration-200 ${
-        open ? 'bg-surface-900/80 border-surface-700/60' : 'bg-surface-900/40 border-surface-800/50 hover:border-surface-700/60'
-      }`}
+      className={`rounded-xl border transition-all duration-200 ${open ? 'bg-surface-900/80 border-surface-700/60' : 'bg-surface-900/40 border-surface-800/50 hover:border-surface-700/60'
+        }`}
     >
       {/* Header row */}
       <button
@@ -248,7 +249,7 @@ export default function HeaderCard({ header, explanation }) {
         </div>
 
         {/* Sections count badge */}
-        {sections.length > 0 && hasIssues && (
+        {sections.length > 0 && (
           <span className="text-xs text-surface-500 bg-surface-800/60 px-2 py-0.5 rounded-md shrink-0">
             {sections.length} seções
           </span>
@@ -302,7 +303,7 @@ export default function HeaderCard({ header, explanation }) {
               {sections.length > 0 && (
                 <div className="space-y-2 pt-1">
                   <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">
-                    Análise detalhada da IA
+                    {hasIssues ? 'Análise detalhada da IA' : 'Feedback de segurança'}
                   </p>
                   {sections.map((section, i) => (
                     <ExplanationSection

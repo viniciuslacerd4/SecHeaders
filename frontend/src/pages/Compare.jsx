@@ -44,7 +44,7 @@ export default function Compare() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="space-y-8"
+      className="space-y-8 flex-1"
     >
       {/* Title */}
       <div className="flex items-center gap-3">
@@ -80,7 +80,7 @@ export default function Compare() {
           <button
             type="submit"
             disabled={loading || !url1.trim() || !url2.trim()}
-            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 text-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-3 sm:py-2.5 rounded-lg transition-all duration-200 text-sm"
           >
             {loading ? (
               <>
@@ -140,11 +140,10 @@ function CompareResults({ a, b }) {
         ].map(({ data, score, side }) => (
           <div
             key={side}
-            className={`relative bg-surface-900/50 border rounded-2xl p-6 flex flex-col items-center ${
-              winner === side
-                ? 'border-emerald-500/30 ring-1 ring-emerald-500/10'
-                : 'border-surface-800/60'
-            }`}
+            className={`relative bg-surface-900/50 border rounded-2xl p-6 flex flex-col items-center ${winner === side
+              ? 'border-emerald-500/30 ring-1 ring-emerald-500/10'
+              : 'border-surface-800/60'
+              }`}
           >
             {winner === side && (
               <span className="absolute top-3 right-3 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
@@ -169,13 +168,13 @@ function CompareResults({ a, b }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-surface-800/60">
-                <th className="text-left text-surface-400 font-semibold text-xs uppercase tracking-wider px-4 py-3">
+                <th className="text-left text-surface-400 font-semibold text-xs uppercase tracking-wider px-3 py-3 sm:px-4">
                   Header
                 </th>
-                <th className="text-center text-surface-400 font-semibold text-xs uppercase tracking-wider px-4 py-3">
+                <th className="text-center text-surface-400 font-semibold text-xs uppercase tracking-wider px-2 py-3 sm:px-4 max-w-[120px] truncate">
                   {cleanUrl(a.url)}
                 </th>
-                <th className="text-center text-surface-400 font-semibold text-xs uppercase tracking-wider px-4 py-3">
+                <th className="text-center text-surface-400 font-semibold text-xs uppercase tracking-wider px-2 py-3 sm:px-4 max-w-[120px] truncate">
                   {cleanUrl(b.url)}
                 </th>
               </tr>
@@ -186,13 +185,13 @@ function CompareResults({ a, b }) {
                 const hb = b.headers?.[key]
                 return (
                   <tr key={key} className="border-b border-surface-800/30 last:border-0">
-                    <td className="px-4 py-3 font-medium text-surface-300 whitespace-nowrap">
+                    <td className="px-3 sm:px-4 py-2.5 font-medium text-surface-300 text-xs sm:text-sm whitespace-nowrap">
                       {ha?.name || hb?.name || key}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 sm:px-4 py-2.5 text-center">
                       <CompareCell header={ha} />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 sm:px-4 py-2.5 text-center">
                       <CompareCell header={hb} />
                     </td>
                   </tr>

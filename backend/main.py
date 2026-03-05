@@ -86,6 +86,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ──────────────────────────────────────────────
+#  Middleware — API Secret (proteção contra acesso não-autorizado)
+# ──────────────────────────────────────────────
+
+_API_SECRET = _os.getenv("API_SECRET", "").strip()
+
+# Rotas que NÃO exigem o secret (healthcheck, docs)
+_PUBLIC_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+
+
+@app.middleware("http")
+async def verify_api_secret(request: Request, call_next):
+    """
+    Valida o header X-API-Secret em todas as requisições.
+    Se API_SECRET não estiver definido no .env, permite tudo (dev local).
+    """
+    # Se não configurou secret, permite tudo (retrocompatível)
+    if not _API_SECRET:
+        return await call_next(request)
+
+    # Rotas públicas não precisam de secret
+    if request.url.path in _PUBLIC_PATHS:
+        return await call_next(request)
+
+    # Preflight CORS (OPTIONS) não carrega headers customizados
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    # Valida o header
+    provided = request.headers.get("x-api-secret", "").strip()
+    if provided != _API_SECRET:
+        from starlette.responses import JSONResponse
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Acesso negado. API secret inválido ou ausente."},
+        )
+
+    return await call_next(request)
+
 
 # ──────────────────────────────────────────────
 #  Schemas (Pydantic)

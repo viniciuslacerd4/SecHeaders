@@ -22,6 +22,8 @@ services:
     volumes:
       - ./frontend:/app          # hot reload do código
       - /app/node_modules        # preserva node_modules do container
+    env_file:
+      - ./frontend/.env          # VITE_API_SECRET
     environment:
       - VITE_API_PROXY_TARGET=http://backend:8000
     depends_on:

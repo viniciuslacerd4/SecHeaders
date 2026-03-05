@@ -245,7 +245,7 @@ async def explain_header(
     llm_config: optional dict com {provider, api_key, model} enviado pelo frontend.
     """
     if not issues or severity == "info":
-        return ""
+        return _ok_explanation(header_name, header_value)
 
     cfg = llm_config or {}
     effective_key = cfg.get("api_key") or LLM_API_KEY
@@ -342,6 +342,13 @@ async def explain_all_headers(headers_data: dict, llm_config: dict | None = None
                 header_value=data.get("value"),
                 llm_config=llm_config,
             )
+        elif severity == "info" or not issues:
+            # Headers OK também recebem feedback positivo
+            tasks[key] = explain_header(
+                data["name"], [], "info",
+                header_value=data.get("value"),
+                llm_config=llm_config,
+            )
 
     if not tasks:
         return {}
@@ -415,6 +422,55 @@ _FALLBACK_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "test": "# Validação:\ncurl -s -I https://seu-site.com | grep -i set-cookie\n# Esperado: Set-Cookie com Secure; HttpOnly; SameSite=Strict",
     },
 }
+
+# ──────────────────────────────────────────────
+#  Feedback positivo para headers OK
+# ──────────────────────────────────────────────
+
+_OK_DESCRIPTIONS: dict[str, dict[str, str]] = {
+    "Strict-Transport-Security": {
+        "good": "Excelente! O header HSTS está configurado, forçando o navegador a usar HTTPS em todas as conexões. Isso protege contra ataques de downgrade de protocolo e Man-in-the-Middle.",
+        "risk_without": "Sem HSTS, um atacante em redes Wi-Fi públicas poderia interceptar a primeira conexão HTTP (antes do redirecionamento para HTTPS) e capturar credenciais, cookies de sessão e dados sensíveis via ataque MITM ou SSL Stripping.",
+    },
+    "Content-Security-Policy": {
+        "good": "Ótimo! O CSP está configurado, controlando quais fontes de scripts, estilos e outros recursos o navegador pode carregar. Esta é a principal defesa contra ataques XSS (Cross-Site Scripting).",
+        "risk_without": "Sem CSP, qualquer script injetado (via XSS) seria executado pelo navegador sem restrições. Um atacante poderia roubar cookies, sessões, dados de formulários, redirecionar usuários para sites maliciosos ou até instalar keyloggers no navegador.",
+    },
+    "X-Frame-Options": {
+        "good": "Muito bem! O X-Frame-Options está configurado, impedindo que o site seja carregado dentro de iframes de outros domínios. Isso protege contra ataques de clickjacking.",
+        "risk_without": "Sem esta proteção, um atacante poderia criar uma página maliciosa com seu site em um iframe invisível, enganando usuários para clicar em botões/links sem perceber — podendo autorizar transações, mudar senhas ou conceder permissões indevidamente.",
+    },
+    "X-Content-Type-Options": {
+        "good": "Perfeito! O X-Content-Type-Options com valor 'nosniff' está ativo, impedindo o navegador de adivinhar (MIME sniffing) o tipo de conteúdo. Isso evita execução de arquivos maliciosos disfarçados.",
+        "risk_without": "Sem 'nosniff', um atacante poderia fazer upload de um arquivo malicioso com extensão inofensiva (ex: .jpg contendo JavaScript). O navegador poderia interpretar o conteúdo como script e executá-lo, abrindo portas para XSS.",
+    },
+    "Referrer-Policy": {
+        "good": "Boa configuração! O Referrer-Policy está definido, controlando quanta informação sobre a URL de origem é compartilhada quando o usuário navega para outros sites.",
+        "risk_without": "Sem uma política restritiva, URLs completas (incluindo tokens de reset de senha, IDs de sessão e parâmetros sensíveis na query string) poderiam vazar para sites terceiros via cabeçalho Referer.",
+    },
+    "Permissions-Policy": {
+        "good": "Excelente! O Permissions-Policy está configurado, restringindo quais APIs do navegador (câmera, microfone, geolocalização, etc.) o site e iframes embutidos podem acessar.",
+        "risk_without": "Sem estas restrições, scripts maliciosos injetados via XSS poderiam acessar a câmera, microfone, geolocalização e sensores do dispositivo do usuário sem nenhuma barreira do navegador.",
+    },
+    "Set-Cookie": {
+        "good": "Tudo certo! Os cookies estão configurados com flags de segurança adequadas, ou não há cookies sendo enviados (o que também é seguro por si só).",
+        "risk_without": "Cookies sem as flags Secure, HttpOnly e SameSite ficam expostos: podem ser interceptados em conexões HTTP, acessados via JavaScript (risco de roubo por XSS), ou enviados em requisições cross-site (risco de CSRF).",
+    },
+}
+
+def _ok_explanation(header_name: str, header_value: str | None = None) -> str:
+    """Gera feedback positivo para headers que estão OK."""
+    data = _OK_DESCRIPTIONS.get(header_name)
+    if not data:
+        return f"## Tudo certo\n✅ O header **{header_name}** está configurado corretamente.\n\n## Se não estivesse configurado\nA ausência deste header poderia expor o site a vulnerabilidades de segurança. Mantenha-o sempre ativo."
+
+    value_info = f"\n\nValor configurado: `{header_value}`" if header_value else ""
+
+    return f"""## Tudo certo
+✅ {data['good']}{value_info}
+
+## Se não estivesse configurado
+⚠️ {data['risk_without']}"""
 
 
 def _fallback_explanation(header_name: str, issues: list[str], severity: str) -> str:

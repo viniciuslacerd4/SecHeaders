@@ -9,6 +9,7 @@
  */
 
 const BASE = import.meta.env.VITE_API_URL || '/api'
+const API_SECRET = import.meta.env.VITE_API_SECRET || ''
 
 // ──────────────────────────────────────────────
 //  Device ID — identificador único do dispositivo
@@ -89,9 +90,13 @@ function llmHeaders() {
   return h
 }
 
+function secretHeader() {
+  return API_SECRET ? { 'X-API-Secret': API_SECRET } : {}
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...llmHeaders(), ...options.headers },
+    headers: { 'Content-Type': 'application/json', ...secretHeader(), ...llmHeaders(), ...options.headers },
     ...options,
   })
 
@@ -144,7 +149,9 @@ export async function clearHistory() {
 // ──────────────────────────────────────────────
 
 export async function exportPdf(id) {
-  const res = await fetch(`${BASE}/export/${id}`)
+  const res = await fetch(`${BASE}/export/${id}`, {
+    headers: { ...secretHeader() },
+  })
   if (!res.ok) throw new Error('Erro ao exportar PDF')
   return res.blob()
 }

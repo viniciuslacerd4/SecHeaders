@@ -24,6 +24,8 @@ services:
         value: /tmp/data
       - key: FRONTEND_URL
         sync: false   # será preenchida com a URL do Vercel (ex: https://secheaders.vercel.app)
+      - key: API_SECRET
+        sync: false   # será preenchida manualmente — mesmo valor do VITE_API_SECRET no Vercel
     healthCheckPath: /health
 
 databases:

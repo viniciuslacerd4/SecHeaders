@@ -60,20 +60,22 @@ export default function Home() {
       >
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-600 to-primary-400 rounded-2xl opacity-0 group-focus-within:opacity-20 blur transition-opacity duration-300" />
-          <div className="relative flex items-center bg-surface-900 border border-surface-700/60 rounded-xl overflow-hidden transition-colors group-focus-within:border-primary-500/40">
-            <Globe className="w-5 h-5 text-surface-500 ml-4 shrink-0" />
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Digite uma URL (ex: exemplo.com.br)"
-              className="flex-1 bg-transparent px-3 py-4 text-surface-100 placeholder:text-surface-500 focus:outline-none text-base"
-              disabled={loading}
-            />
+          <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-surface-900 border border-surface-700/60 rounded-xl overflow-hidden transition-colors group-focus-within:border-primary-500/40">
+            <div className="flex items-center flex-1">
+              <Globe className="w-5 h-5 text-surface-500 ml-4 shrink-0" />
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Digite uma URL (ex: exemplo.com.br)"
+                className="flex-1 bg-transparent px-3 py-4 text-surface-100 placeholder:text-surface-500 focus:outline-none text-base"
+                disabled={loading}
+              />
+            </div>
             <button
               type="submit"
               disabled={loading || !url.trim()}
-              className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 m-1.5 rounded-lg transition-all duration-200 text-sm shrink-0"
+              className="flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-3 sm:py-2.5 sm:m-1.5 sm:rounded-lg transition-all duration-200 text-sm shrink-0 border-t border-surface-700/40 sm:border-0"
             >
               {loading ? (
                 <div className="flex items-center gap-2">

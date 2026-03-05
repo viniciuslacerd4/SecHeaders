@@ -129,7 +129,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
             setDefaultLLM(status)
             localStorage.setItem(DEFAULT_LLM_CACHE_KEY, JSON.stringify(status))
           })
-          .catch(() => {})
+          .catch(() => { })
       }
     }
   }, [isOpen])
@@ -268,7 +268,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
           ...prev,
           [selectedProvider]: { ...prev[selectedProvider], model }
         }))
-      } catch {}
+      } catch { }
     }
   }
 
@@ -311,7 +311,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
           {/* Modal */}
           <motion.div
             ref={modalRef}
-            className="relative w-full max-w-lg bg-surface-900 border border-surface-700/60 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-lg bg-surface-900 border border-surface-700/60 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden max-h-[85dvh] flex flex-col"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -346,19 +346,15 @@ export default function AISettingsModal({ isOpen, onClose }) {
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex items-start gap-3 p-3.5 rounded-xl ${
-                    PROVIDERS.find(p => p.id === activeProvider)?.bg || 'bg-primary-500/10'
-                  } border ${
-                    PROVIDERS.find(p => p.id === activeProvider)?.border || 'border-primary-500/20'
-                  }`}
+                  className={`flex items-start gap-3 p-3.5 rounded-xl ${PROVIDERS.find(p => p.id === activeProvider)?.bg || 'bg-primary-500/10'
+                    } border ${PROVIDERS.find(p => p.id === activeProvider)?.border || 'border-primary-500/20'
+                    }`}
                 >
-                  <Sparkles className={`w-5 h-5 shrink-0 mt-0.5 ${
-                    PROVIDERS.find(p => p.id === activeProvider)?.color || 'text-primary-400'
-                  }`} />
+                  <Sparkles className={`w-5 h-5 shrink-0 mt-0.5 ${PROVIDERS.find(p => p.id === activeProvider)?.color || 'text-primary-400'
+                    }`} />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${
-                      PROVIDERS.find(p => p.id === activeProvider)?.color || 'text-primary-300'
-                    }`}>
+                    <p className={`text-sm font-medium ${PROVIDERS.find(p => p.id === activeProvider)?.color || 'text-primary-300'
+                      }`}>
                       Usando {PROVIDERS.find(p => p.id === activeProvider)?.name || activeProvider}
                     </p>
                     <p className="text-xs text-surface-400 mt-0.5">
@@ -412,11 +408,10 @@ export default function AISettingsModal({ isOpen, onClose }) {
                     <motion.div
                       key={prov.id}
                       layout
-                      className={`rounded-xl border transition-colors ${
-                        isExpanded
+                      className={`rounded-xl border transition-colors ${isExpanded
                           ? `${prov.border} ${prov.bg}`
                           : 'border-surface-800/50 hover:border-surface-700/60'
-                      }`}
+                        }`}
                     >
                       {/* Provider row */}
                       <button
@@ -490,9 +485,8 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                       <button
                                         type="button"
                                         onClick={() => models.length > 0 && setModelOpen(!modelOpen)}
-                                        className={`w-full flex items-center justify-between px-3 py-2 bg-surface-950/50 border border-surface-700/40 rounded-lg text-xs transition-colors ${
-                                          models.length > 0 ? 'cursor-pointer hover:border-surface-600' : 'cursor-default text-surface-500'
-                                        }`}
+                                        className={`w-full flex items-center justify-between px-3 py-2 bg-surface-950/50 border border-surface-700/40 rounded-lg text-xs transition-colors ${models.length > 0 ? 'cursor-pointer hover:border-surface-600' : 'cursor-default text-surface-500'
+                                          }`}
                                       >
                                         <span className="font-mono truncate">
                                           {modelsLoading ? 'Carregando...' : selectedModel || storedKeys[prov.id]?.model || 'Carregando...'}
@@ -516,11 +510,10 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                               <button
                                                 key={m}
                                                 onClick={() => handleModelChange(m)}
-                                                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
-                                                  selectedModel === m
+                                                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${selectedModel === m
                                                     ? 'bg-primary-600/15 text-primary-300'
                                                     : 'text-surface-300 hover:bg-surface-700/60'
-                                                }`}
+                                                  }`}
                                               >
                                                 <span className="font-mono truncate">{m}</span>
                                                 {selectedModel === m && <Check className="w-3.5 h-3.5 text-primary-400 shrink-0" />}
@@ -546,11 +539,11 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                   </div>
 
                                   {/* Actions for saved provider */}
-                                  <div className="flex items-center gap-2 pt-1">
+                                  <div className="grid grid-cols-1 sm:flex sm:flex-row items-center gap-2 pt-1">
                                     {!isActive ? (
                                       <button
                                         onClick={() => handleSetActive(prov.id)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary-600/15 text-primary-300 hover:bg-primary-600/25 border border-primary-500/20 transition-colors"
+                                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary-600/15 text-primary-300 hover:bg-primary-600/25 border border-primary-500/20 transition-colors"
                                       >
                                         <Zap className="w-3.5 h-3.5" />
                                         Usar este provider
@@ -558,27 +551,29 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                     ) : defaultLLM?.available ? (
                                       <button
                                         onClick={handleUseDefault}
-                                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+                                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
                                       >
                                         <Zap className="w-3.5 h-3.5" />
                                         Voltar à IA padrão
                                       </button>
                                     ) : null}
-                                    <button
-                                      onClick={() => handleStartEditing(prov.id)}
-                                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-800 border border-surface-700/40 transition-colors"
-                                    >
-                                      <KeyRound className="w-3.5 h-3.5" />
-                                      Trocar key
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteKey(prov.id)}
-                                      disabled={deleting === prov.id}
-                                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-red-400 hover:bg-red-500/10 border border-surface-700/40 hover:border-red-500/20 transition-colors disabled:opacity-40"
-                                    >
-                                      <Trash2 className={`w-3.5 h-3.5 ${deleting === prov.id ? 'animate-spin' : ''}`} />
-                                      Remover
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleStartEditing(prov.id)}
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-800 border border-surface-700/40 transition-colors"
+                                      >
+                                        <KeyRound className="w-3.5 h-3.5" />
+                                        Trocar key
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteKey(prov.id)}
+                                        disabled={deleting === prov.id}
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-red-400 hover:bg-red-500/10 border border-surface-700/40 hover:border-red-500/20 transition-colors disabled:opacity-40"
+                                      >
+                                        <Trash2 className={`w-3.5 h-3.5 ${deleting === prov.id ? 'animate-spin' : ''}`} />
+                                        Remover
+                                      </button>
+                                    </div>
                                   </div>
                                 </>
                               )}
@@ -614,11 +609,10 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                     <button
                                       onClick={handleSaveKey}
                                       disabled={!apiKey.trim() || apiKey.trim().length < 5 || saving}
-                                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                                        apiKey.trim().length >= 5
+                                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${apiKey.trim().length >= 5
                                           ? 'bg-primary-600 hover:bg-primary-500 text-white'
                                           : 'bg-surface-800 text-surface-500 cursor-not-allowed'
-                                      }`}
+                                        }`}
                                     >
                                       {saving ? (
                                         <>
