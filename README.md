@@ -365,3 +365,5 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 - [PortSwigger Web Security Academy](https://portswigger.net/web-security)
 - [FastAPI Documentation](https://fastapi.tiangolo.com)
 - [OpenRouter API](https://openrouter.ai/docs)
+
+.
