@@ -127,6 +127,27 @@ async def verify_api_secret(request: Request, call_next):
 
 
 # ──────────────────────────────────────────────
+#  Middleware — Security Headers (proteção nas respostas)
+# ──────────────────────────────────────────────
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Adiciona headers de segurança em todas as respostas da API."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=(), "
+        "usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+    )
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; frame-ancestors 'none'"
+    )
+    return response
+
+
+# ──────────────────────────────────────────────
 #  Schemas (Pydantic)
 # ──────────────────────────────────────────────
 
