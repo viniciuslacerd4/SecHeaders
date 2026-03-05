@@ -60,10 +60,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — aceita requisições do frontend React em desenvolvimento
+# CORS — aceita requisições do frontend (dev local + produção Vercel)
+_cors_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+]
+
+# Em produção, adiciona a URL do Vercel via variável de ambiente
+import os as _os
+_frontend_url = _os.getenv("FRONTEND_URL")
+if _frontend_url:
+    _cors_origins.append(_frontend_url.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
