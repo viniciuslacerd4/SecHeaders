@@ -287,6 +287,12 @@ cython_debug/
 *.db-journal
 
 # =========================
+# SecHeaders — Dados locais
+# =========================
+backend/data/
+!backend/.env.example
+
+# =========================
 # OS / IDE
 # =========================
 .DS_Store

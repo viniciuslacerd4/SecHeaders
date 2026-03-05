@@ -1,0 +1,33 @@
+# render.yaml — Blueprint do Render para deploy automático
+# Docs: https://docs.render.com/blueprint-spec
+
+services:
+  - type: web
+    name: secheaders-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: secheaders-db
+          property: connectionURI
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: LLM_MODEL
+        value: stepfun/step-3.5-flash:free
+      - key: LLM_API_KEY
+        sync: false   # será preenchida manualmente no dashboard do Render
+      - key: DATA_DIR
+        value: /tmp/data
+      - key: FRONTEND_URL
+        sync: false   # será preenchida com a URL do Vercel (ex: https://secheaders.vercel.app)
+    healthCheckPath: /health
+
+databases:
+  - name: secheaders-db
+    plan: free
+    databaseName: secheaders
+    region: oregon
