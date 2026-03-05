@@ -14,6 +14,7 @@ class Analysis(Base):
     __tablename__ = "analyses"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    device_id = Column(String(64), nullable=True, index=True)
     url = Column(String(2048), nullable=False, index=True)
     score = Column(Float, nullable=False)
     classification = Column(String(20), nullable=False)

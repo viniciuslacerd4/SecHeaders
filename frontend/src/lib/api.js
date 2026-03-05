@@ -150,7 +150,7 @@ export async function clearHistory() {
 
 export async function exportPdf(id) {
   const res = await fetch(`${BASE}/export/${id}`, {
-    headers: { ...secretHeader() },
+    headers: { ...secretHeader(), 'X-Device-ID': getDeviceId() },
   })
   if (!res.ok) throw new Error('Erro ao exportar PDF')
   return res.blob()

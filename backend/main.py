@@ -603,10 +603,13 @@ async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depe
         "summary": summary,
     }
 
+    device_id = raw.headers.get("x-device-id", "").strip() or None
+
     db_analysis = Analysis(
         url=url,
         score=score_result.total_score,
         classification=score_result.classification,
+        device_id=device_id,
     )
     db_analysis.set_result(full_result)
 
@@ -627,17 +630,19 @@ async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depe
 
 @app.get("/history", response_model=list[HistoryItem])
 async def get_history(
+    request: Request,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """Retorna lista de análises anteriores, ordenadas por data (mais recente primeiro)."""
-    stmt = (
-        select(Analysis)
-        .order_by(desc(Analysis.created_at))
-        .limit(limit)
-        .offset(offset)
-    )
+    """Retorna lista de análises anteriores, filtrada por device_id."""
+    device_id = request.headers.get("x-device-id", "").strip()
+
+    stmt = select(Analysis).order_by(desc(Analysis.created_at))
+    if device_id:
+        stmt = stmt.where(Analysis.device_id == device_id)
+    stmt = stmt.limit(limit).offset(offset)
+
     result = await db.execute(stmt)
     analyses = result.scalars().all()
 
@@ -654,9 +659,13 @@ async def get_history(
 
 
 @app.delete("/history")
-async def clear_history(db: AsyncSession = Depends(get_db)):
-    """Remove todas as análises do histórico."""
+async def clear_history(request: Request, db: AsyncSession = Depends(get_db)):
+    """Remove análises do histórico do dispositivo."""
+    device_id = request.headers.get("x-device-id", "").strip()
+
     stmt = delete(Analysis)
+    if device_id:
+        stmt = stmt.where(Analysis.device_id == device_id)
     result = await db.execute(stmt)
     await db.commit()
     return {"status": "cleared", "deleted": result.rowcount}
@@ -665,14 +674,21 @@ async def clear_history(db: AsyncSession = Depends(get_db)):
 @app.get("/history/{analysis_id}", response_model=HistoryDetailResponse)
 async def get_history_detail(
     analysis_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Retorna detalhes completos de uma análise específica."""
+    device_id = request.headers.get("x-device-id", "").strip()
+
     stmt = select(Analysis).where(Analysis.id == analysis_id)
     result = await db.execute(stmt)
     analysis = result.scalar_one_or_none()
 
     if not analysis:
+        raise HTTPException(status_code=404, detail="Análise não encontrada.")
+
+    # Verifica se a análise pertence ao device que está pedindo
+    if analysis.device_id and device_id and analysis.device_id != device_id:
         raise HTTPException(status_code=404, detail="Análise não encontrada.")
 
     stored = analysis.get_result()
@@ -691,14 +707,21 @@ async def get_history_detail(
 @app.get("/export/{analysis_id}")
 async def export_pdf(
     analysis_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Exporta uma análise em formato PDF."""
+    device_id = request.headers.get("x-device-id", "").strip()
+
     stmt = select(Analysis).where(Analysis.id == analysis_id)
     result = await db.execute(stmt)
     analysis = result.scalar_one_or_none()
 
     if not analysis:
+        raise HTTPException(status_code=404, detail="Análise não encontrada.")
+
+    # Verifica se a análise pertence ao device que está pedindo
+    if analysis.device_id and device_id and analysis.device_id != device_id:
         raise HTTPException(status_code=404, detail="Análise não encontrada.")
 
     stored = analysis.get_result()
