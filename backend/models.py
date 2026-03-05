@@ -18,9 +18,8 @@ class Analysis(Base):
     score = Column(Float, nullable=False)
     classification = Column(String(20), nullable=False)
     result_json = Column(Text, nullable=False)
-    created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    from sqlalchemy.sql import func
+    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
 
     def set_result(self, data: dict):
         """Serializa o resultado da análise para JSON."""
