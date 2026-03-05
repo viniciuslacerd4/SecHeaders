@@ -141,7 +141,7 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/  ← removido: conflitava com frontend/src/lib/
 lib64/
 parts/
 sdist/
