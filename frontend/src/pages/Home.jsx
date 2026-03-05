@@ -1,29 +1,23 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Search, ArrowRight, Globe, Zap, FileText } from 'lucide-react'
-import { analyzeUrl } from '../lib/api'
+import { useAnalysis } from '../components/AnalysisContext'
 
 export default function Home() {
   const [url, setUrl] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const { loading, startAnalysis } = useAnalysis()
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!url.trim()) return
+    if (!url.trim() || loading) return
 
     setError('')
-    setLoading(true)
 
     try {
-      const result = await analyzeUrl(url.trim())
-      navigate('/result', { state: { result } })
+      await startAnalysis(url.trim())
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
     }
   }
 

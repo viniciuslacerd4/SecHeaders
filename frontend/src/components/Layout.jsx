@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Home, History, GitCompareArrows, Sparkles, Quote, Github } from 'lucide-react'
 import AISettingsModal, { isLLMConfigured, isDefaultLLMAvailable } from './AISettingsModal'
+import AnalysisToast from './AnalysisToast'
+import { useAnalysis } from './AnalysisContext'
 import { fetchLLMStatus } from '../lib/api'
 import Logo from './Logo'
 
@@ -15,6 +17,13 @@ export default function Layout() {
   const [aiModalOpen, setAiModalOpen] = useState(false)
   const configured = isLLMConfigured()
   const [hasDefaultLLM, setHasDefaultLLM] = useState(isDefaultLLMAvailable())
+  const navigate = useNavigate()
+  const { setNavigate } = useAnalysis()
+
+  // Passa o navigate para o contexto global
+  useEffect(() => {
+    setNavigate(navigate)
+  }, [navigate, setNavigate])
 
   // Fetch default LLM status on mount
   useEffect(() => {
@@ -160,6 +169,9 @@ export default function Layout() {
 
       {/* AI Settings Modal */}
       <AISettingsModal isOpen={aiModalOpen} onClose={() => setAiModalOpen(false)} />
+
+      {/* Analysis Toast (global, persists across pages) */}
+      <AnalysisToast />
     </div>
   )
 }
