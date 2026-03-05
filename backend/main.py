@@ -73,9 +73,14 @@ _frontend_url = _os.getenv("FRONTEND_URL")
 if _frontend_url:
     _cors_origins.append(_frontend_url.rstrip("/"))
 
+# Regex para aceitar qualquer deploy do Vercel (preview + production)
+# Ex: https://sec-headers-abc123-user.vercel.app
+_cors_regex = r"https://sec-headers.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
