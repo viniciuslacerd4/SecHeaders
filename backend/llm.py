@@ -4,8 +4,8 @@ llm.py — Integração com LLM (OpenAI / Anthropic / Google Gemini / OpenRouter
 Gera explicações em linguagem natural para cada problema
 encontrado nos security headers, e um resumo geral da análise.
 
-O provider padrão é OpenRouter com o modelo stepfun/step-3.5-flash:free,
-permitindo que usuários usem a aplicação sem precisar configurar sua própria API key.
+O provider padrão é OpenRouter com o modelo meta-llama/llama-3.3-70b-instruct:free,
+o melhor modelo gratuito disponível para geração de texto e análise.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ load_dotenv()
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").lower()
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "stepfun/step-3.5-flash:free")
+LLM_MODEL = os.getenv("LLM_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 _PLACEHOLDER_KEYS = {"your-api-key-here", "your-openrouter-api-key-here"}

@@ -18,7 +18,25 @@ from __future__ import annotations
 
 import io
 import re
+from pathlib import Path
 from datetime import datetime
+
+from reportlab.lib.utils import ImageReader
+
+
+# ──────────────────────────────────────────────
+#  Logo do documento
+# ──────────────────────────────────────────────
+
+def _load_document_logo() -> ImageReader | None:
+    png_path = Path(__file__).parent / "data" / "SecHeaders.png"
+    try:
+        return ImageReader(str(png_path))
+    except Exception:
+        return None
+
+
+_DOCUMENT_LOGO = _load_document_logo()
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -177,72 +195,6 @@ def _format_inline_markdown(text: str) -> str:
     return text
 
 
-def _draw_shield_icon(canvas, cx, cy, size):
-    """
-    Desenha o ícone do escudo SecHeaders (shield + </>) em miniatura.
-    cx, cy = centro do ícone; size = altura total.
-    Usa as mesmas curvas do SVG original da logo.
-    """
-    sc = size / 512.0
-    ox = cx - size / 2
-    oy = cy - size / 2
-
-    def tx(x):
-        return x * sc + ox
-
-    def ty(y):
-        return (512 - y) * sc + oy
-
-    # ── Shield body (preenchido com gradiente simulado) ──
-    # Cor sólida indigo como base
-    canvas.setFillColor(colors.Color(0.39, 0.40, 0.95))   # #6366f1
-    canvas.setStrokeColor(colors.Color(0.65, 0.70, 0.98))  # #a5b4fc
-    canvas.setLineWidth(1.5 * sc)
-    p = canvas.beginPath()
-    p.moveTo(tx(256), ty(32))
-    p.curveTo(tx(296), ty(52), tx(356), ty(72), tx(432), ty(72))
-    p.curveTo(tx(442), ty(72), tx(450), ty(80), tx(450), ty(90))
-    p.lineTo(tx(450), ty(260))
-    p.curveTo(tx(450), ty(372), tx(370), ty(440), tx(262), ty(480))
-    p.curveTo(tx(258), ty(482), tx(254), ty(482), tx(250), ty(480))
-    p.curveTo(tx(142), ty(440), tx(62), ty(372), tx(62), ty(260))
-    p.lineTo(tx(62), ty(90))
-    p.curveTo(tx(62), ty(80), tx(70), ty(72), tx(80), ty(72))
-    p.curveTo(tx(156), ty(72), tx(216), ty(52), tx(256), ty(32))
-    p.close()
-    canvas.drawPath(p, stroke=1, fill=1)
-
-    # ── Code symbols </> (branco) ──
-    canvas.setStrokeColor(colors.Color(0.88, 0.91, 1.0))  # #e0e7ff
-    canvas.setLineCap(1)   # Round
-    canvas.setLineJoin(1)  # Round
-
-    # < left bracket
-    canvas.setLineWidth(26 * sc)
-    p = canvas.beginPath()
-    p.moveTo(tx(194), ty(200))
-    p.lineTo(tx(128), ty(260))
-    p.lineTo(tx(194), ty(320))
-    canvas.drawPath(p, stroke=1, fill=0)
-
-    # / slash
-    canvas.setLineWidth(20 * sc)
-    canvas.setStrokeAlpha(0.7)
-    p = canvas.beginPath()
-    p.moveTo(tx(280), ty(180))
-    p.lineTo(tx(232), ty(340))
-    canvas.drawPath(p, stroke=1, fill=0)
-    canvas.setStrokeAlpha(1.0)
-
-    # > right bracket
-    canvas.setLineWidth(26 * sc)
-    p = canvas.beginPath()
-    p.moveTo(tx(318), ty(200))
-    p.lineTo(tx(384), ty(260))
-    p.lineTo(tx(318), ty(320))
-    canvas.drawPath(p, stroke=1, fill=0)
-
-
 def _draw_header_footer(canvas, doc):
     """
     Desenha cabeçalho e rodapé em cada página do PDF.
@@ -258,8 +210,14 @@ def _draw_header_footer(canvas, doc):
     header_y = page_h - 16 * mm
     icon_size = 18
 
-    # Escudo mini
-    _draw_shield_icon(canvas, margin_x + icon_size / 2, header_y, icon_size)
+    # Logo mini
+    if _DOCUMENT_LOGO:
+        canvas.drawImage(
+            _DOCUMENT_LOGO,
+            margin_x, header_y - icon_size / 2,
+            width=icon_size, height=icon_size,
+            preserveAspectRatio=True, mask="auto",
+        )
 
     # Texto "SecHeaders" ao lado do ícone
     canvas.setFont("Helvetica-Bold", 10)
@@ -280,7 +238,7 @@ def _draw_header_footer(canvas, doc):
     canvas.setLineWidth(0.5)
     canvas.line(margin_x, footer_y + 6, page_w - margin_x, footer_y + 6)
 
-    # Escudo mini no rodapé
+    # Logo mini no rodapé
     footer_icon_size = 12
     label = "Relatório gerado via SecHeaders"
     canvas.setFont("Helvetica", 7.5)
@@ -288,7 +246,13 @@ def _draw_header_footer(canvas, doc):
     total_w = footer_icon_size + 4 + text_w
     start_x = (page_w - total_w) / 2
 
-    _draw_shield_icon(canvas, start_x + footer_icon_size / 2, footer_y - 1, footer_icon_size)
+    if _DOCUMENT_LOGO:
+        canvas.drawImage(
+            _DOCUMENT_LOGO,
+            start_x, footer_y - footer_icon_size / 2 - 1,
+            width=footer_icon_size, height=footer_icon_size,
+            preserveAspectRatio=True, mask="auto",
+        )
 
     canvas.setFillColor(colors.Color(0.45, 0.45, 0.5))
     canvas.drawString(start_x + footer_icon_size + 4, footer_y - 4, label)

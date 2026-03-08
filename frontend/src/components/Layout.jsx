@@ -49,7 +49,7 @@ export default function Layout() {
             {/* Logo */}
             <NavLink to="/" className="flex items-center gap-2.5 group">
               <div className="relative">
-                <Logo className="w-8 h-8 transition-transform group-hover:scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.3)]" />
+                <Logo className="w-10 h-10 transition-transform group-hover:scale-110 drop-shadow-[0_0_10px_rgba(99,102,241,0.4)]" />
               </div>
               <span className="text-lg font-bold tracking-tight">
                 <span className="text-primary-400">Sec</span>

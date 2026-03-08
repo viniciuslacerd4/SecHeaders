@@ -53,7 +53,7 @@ const PROVIDERS = [
     bg: 'bg-purple-500/10',
     border: 'border-purple-500/20',
     dot: 'bg-purple-400',
-    defaultModel: 'stepfun/step-3.5-flash:free',
+    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
     placeholder: 'sk-or-...',
   },
 ]
