@@ -125,6 +125,11 @@ export async function analyzeUrl(url) {
   return res.json()
 }
 
+export async function fetchAiReport(analysisId) {
+  const res = await request(`/analysis/${analysisId}/report`, { method: 'POST' })
+  return res.json()
+}
+
 // ──────────────────────────────────────────────
 //  Histórico
 // ──────────────────────────────────────────────

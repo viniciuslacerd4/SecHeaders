@@ -493,66 +493,15 @@ async def list_stored_models(request: StoredModelsRequest, db: AsyncSession = De
 # ──────────────────────────────────────────────
 
 
-async def _resolve_llm_config(raw: Request, db: AsyncSession) -> dict | None:
-    """
-    Resolve a configuração de LLM para uma requisição.
-    Prioridade:
-      1. API key enviada diretamente nos headers (legado/compatibilidade)
-      2. device_id + provider nos headers → busca key criptografada no banco
-      3. None → usa o LLM padrão do servidor
-    """
-    # 1. Key direta nos headers (legado)
-    llm_api_key = raw.headers.get("x-llm-api-key", "").strip()
-    if llm_api_key:
-        return {
-            "provider": raw.headers.get("x-llm-provider", "").strip(),
-            "api_key": llm_api_key,
-            "model": raw.headers.get("x-llm-model", "").strip(),
-        }
-
-    # 2. device_id → busca key armazenada
-    device_id = raw.headers.get("x-device-id", "").strip()
-    llm_provider = raw.headers.get("x-llm-provider", "").strip()
-    if device_id and llm_provider:
-        stmt = select(StoredAPIKey).where(
-            StoredAPIKey.device_id == device_id,
-            StoredAPIKey.provider == llm_provider,
-        )
-        result = await db.execute(stmt)
-        stored = result.scalar_one_or_none()
-        if stored:
-            try:
-                api_key = decrypt_api_key(stored.encrypted_key)
-                return {
-                    "provider": stored.provider,
-                    "api_key": api_key,
-                    "model": raw.headers.get("x-llm-model", "").strip() or stored.model or "",
-                }
-            except Exception:
-                pass  # fallback para LLM padrão
-
-    # 3. Sem config → usa padrão do servidor
-    return None
-
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depends(get_db)):
     """
-    Realiza análise completa de security headers de uma URL.
-
-    Fluxo:
-      1. Coleta headers HTTP via httpx
-      2. Analisa cada security header
-      3. Calcula score de segurança
-      4. Gera explicações via LLM (em paralelo)
-      5. Gera resumo executivo via LLM
-      6. Salva análise no banco de dados
-      7. Retorna resultado completo
+    Fase 1: coleta headers + calcula score + salva no banco.
+    Retorna imediatamente sem aguardar o LLM.
+    O relatório de IA é gerado separadamente via POST /analysis/{id}/report.
     """
     url = request.url
-
-    # Resolver configuração de LLM (key criptografada ou padrão)
-    llm_config = await _resolve_llm_config(raw, db)
 
     # 1-2. Coleta e análise de headers
     try:
@@ -578,29 +527,16 @@ async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depe
     # 3. Calcular score
     score_result: ScoreResult = calculate_score(analysis)
 
-    # Dados dos headers em dict para uso no LLM e resposta
     headers_dict = {k: v.to_dict() for k, v in analysis.headers.items()}
     score_dict = score_result.to_dict()
 
-    # 4. Gerar explicações via LLM (em paralelo)
-    explanations = await explain_all_headers(headers_dict, llm_config)
-
-    # 5. Gerar resumo executivo
-    summary = await generate_summary(
-        url=url,
-        score=score_result.total_score,
-        classification=score_result.classification,
-        headers_data=headers_dict,
-        llm_config=llm_config,
-    )
-
-    # 6. Salvar no banco de dados
-    full_result = {
+    # 4. Salvar resultado parcial (sem LLM) no banco
+    partial_result = {
         "url": url,
         "headers": headers_dict,
         "score": score_dict,
-        "explanations": explanations,
-        "summary": summary,
+        "explanations": {},
+        "summary": "",
     }
 
     device_id = raw.headers.get("x-device-id", "").strip() or None
@@ -611,21 +547,66 @@ async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depe
         classification=score_result.classification,
         device_id=device_id,
     )
-    db_analysis.set_result(full_result)
+    db_analysis.set_result(partial_result)
 
     db.add(db_analysis)
     await db.commit()
     await db.refresh(db_analysis)
 
-    # 7. Retornar resultado
+    # 5. Retornar imediatamente
     return AnalyzeResponse(
         url=url,
         headers=headers_dict,
         score=score_dict,
-        explanations=explanations,
-        summary=summary,
+        explanations={},
+        summary="",
         analysis_id=db_analysis.id,
     )
+
+
+class ReportResponse(BaseModel):
+    """Resposta do relatório de IA (fase 2)."""
+    explanations: dict
+    summary: str
+
+
+@app.post("/analysis/{analysis_id}/report", response_model=ReportResponse)
+async def generate_report(analysis_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Fase 2: gera explicações LLM + resumo executivo para uma análise existente.
+    Atualiza o registro no banco e retorna o relatório.
+    Se o relatório já foi gerado, retorna o resultado salvo diretamente.
+    """
+    db_analysis = await db.get(Analysis, analysis_id)
+    if not db_analysis:
+        raise HTTPException(status_code=404, detail="Análise não encontrada.")
+
+    data = db_analysis.get_result()
+
+    # Se já gerado, retorna sem chamar o LLM novamente
+    if data.get("summary") and data.get("explanations"):
+        return ReportResponse(
+            explanations=data["explanations"],
+            summary=data["summary"],
+        )
+
+    headers_dict = data["headers"]
+    score_dict = data["score"]
+
+    explanations = await explain_all_headers(headers_dict)
+    summary = await generate_summary(
+        url=data["url"],
+        score=score_dict["total_score"],
+        classification=score_dict["classification"],
+        headers_data=headers_dict,
+    )
+
+    data["explanations"] = explanations
+    data["summary"] = summary
+    db_analysis.set_result(data)
+    await db.commit()
+
+    return ReportResponse(explanations=explanations, summary=summary)
 
 
 @app.get("/history", response_model=list[HistoryItem])

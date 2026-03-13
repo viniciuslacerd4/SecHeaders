@@ -17,36 +17,6 @@ import {
 
 const PROVIDERS = [
   {
-    id: 'openai',
-    name: 'OpenAI',
-    color: 'text-green-400',
-    bg: 'bg-green-500/10',
-    border: 'border-green-500/20',
-    dot: 'bg-green-400',
-    defaultModel: 'gpt-4o-mini',
-    placeholder: 'sk-...',
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic',
-    color: 'text-orange-400',
-    bg: 'bg-orange-500/10',
-    border: 'border-orange-500/20',
-    dot: 'bg-orange-400',
-    defaultModel: 'claude-sonnet-4-20250514',
-    placeholder: 'sk-ant-...',
-  },
-  {
-    id: 'gemini',
-    name: 'Google Gemini',
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
-    dot: 'bg-blue-400',
-    defaultModel: 'gemini-2.5-flash',
-    placeholder: 'AI...',
-  },
-  {
     id: 'openrouter',
     name: 'OpenRouter',
     color: 'text-purple-400',
@@ -328,7 +298,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-surface-100">Configuração de IA</h2>
-                  <p className="text-xs text-surface-400">Gerencie seus providers e API keys</p>
+                  <p className="text-xs text-surface-400">Configure sua API key do OpenRouter</p>
                 </div>
               </div>
               <button
@@ -381,7 +351,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                       Você pode analisar sites sem configurar nada!
                     </p>
                     <p className="text-xs text-surface-500 mt-1.5">
-                      Se preferir, adicione sua própria API key abaixo para usar outro modelo.
+                      Se preferir, adicione sua própria API key do OpenRouter abaixo para usar outro modelo.
                     </p>
                   </div>
                 </motion.div>

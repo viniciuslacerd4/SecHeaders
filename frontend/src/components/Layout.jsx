@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Home, History, GitCompareArrows, Sparkles, Quote, Github } from 'lucide-react'
-import AISettingsModal, { isLLMConfigured, isDefaultLLMAvailable } from './AISettingsModal'
+import { Home, History, GitCompareArrows, Quote, Github } from 'lucide-react'
 import AnalysisToast from './AnalysisToast'
 import { useAnalysis } from './AnalysisContext'
-import { fetchLLMStatus } from '../lib/api'
 import Logo from './Logo'
 
 const NAV_ITEMS = [
@@ -14,9 +12,6 @@ const NAV_ITEMS = [
 ]
 
 export default function Layout() {
-  const [aiModalOpen, setAiModalOpen] = useState(false)
-  const configured = isLLMConfigured()
-  const [hasDefaultLLM, setHasDefaultLLM] = useState(isDefaultLLMAvailable())
   const navigate = useNavigate()
   const { setNavigate } = useAnalysis()
 
@@ -24,16 +19,6 @@ export default function Layout() {
   useEffect(() => {
     setNavigate(navigate)
   }, [navigate, setNavigate])
-
-  // Fetch default LLM status on mount
-  useEffect(() => {
-    fetchLLMStatus()
-      .then((status) => {
-        localStorage.setItem('secheaders_default_llm', JSON.stringify(status))
-        setHasDefaultLLM(status?.available === true)
-      })
-      .catch(() => { })
-  }, [])
 
   return (
     <div className="min-h-screen bg-grid flex flex-col overflow-x-hidden">
@@ -76,20 +61,6 @@ export default function Layout() {
                 </NavLink>
               ))}
 
-              {/* Divider */}
-              <div className="w-px h-6 bg-surface-700/60 mx-1.5" />
-
-              {/* AI Settings Button */}
-              <button
-                onClick={() => setAiModalOpen(true)}
-                className="relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-surface-400 hover:text-primary-300 hover:bg-primary-600/10 transition-all duration-200 group"
-                title="Configurar IA"
-              >
-                <div className="relative">
-                  <Sparkles className="w-4 h-4 transition-transform group-hover:scale-110" />
-                </div>
-                <span className="hidden sm:inline">IA</span>
-              </button>
             </div>
           </div>
         </div>
@@ -166,9 +137,6 @@ export default function Layout() {
           </div>
         </div>
       </footer>
-
-      {/* AI Settings Modal */}
-      <AISettingsModal isOpen={aiModalOpen} onClose={() => setAiModalOpen(false)} />
 
       {/* Analysis Toast (global, persists across pages) */}
       <AnalysisToast />

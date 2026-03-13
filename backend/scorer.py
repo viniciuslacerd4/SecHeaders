@@ -137,8 +137,12 @@ def calculate_score(analysis: AnalysisResult) -> ScoreResult:
             continue
 
         severity = header_result.severity
-        penalty = SEVERITY_PENALTY.get(severity, 0.0)
-        earned = max_points * (1.0 - penalty)
+        if header_result.earned_fraction is not None:
+            earned = max_points * header_result.earned_fraction
+            penalty = round(1.0 - header_result.earned_fraction, 4)
+        else:
+            penalty = SEVERITY_PENALTY.get(severity, 0.0)
+            earned = max_points * (1.0 - penalty)
 
         hs = HeaderScore(
             name=header_result.name,

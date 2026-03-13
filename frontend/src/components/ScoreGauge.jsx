@@ -1,27 +1,60 @@
-import { useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { CLASSIFICATION_CONFIG } from '../lib/utils'
 
 /**
  * ScoreGauge — Medidor visual circular de 0 a 100.
- * Usa SVG com stroke-dashoffset animado.
+ * Aceita delay/duration para sincronizar com outras animações na página.
  */
-export default function ScoreGauge({ score = 0, classification = 'Regular', size = 180 }) {
+export default function ScoreGauge({ score = 0, classification = 'Regular', size = 180, delay = 0, duration = 1 }) {
   const config = CLASSIFICATION_CONFIG[classification] || CLASSIFICATION_CONFIG['Regular']
 
   const radius = 45
   const circumference = 2 * Math.PI * radius
-  const progress = Math.min(Math.max(score, 0), 100)
-  const dashoffset = circumference - (progress / 100) * circumference
 
-  const displayScore = useMemo(() => Math.round(score * 10) / 10, [score])
+  const [animated, setAnimated] = useState(0)
+  const [done, setDone] = useState(false)
+  const rafRef = useRef(null)
+
+  useEffect(() => {
+    setAnimated(0)
+    setDone(false)
+    const startMs = delay * 1000
+    const durationMs = duration * 1000
+    let timeout
+
+    timeout = setTimeout(() => {
+      const startTime = performance.now()
+      const tick = (now) => {
+        const elapsed = now - startTime
+        const progress = Math.min(elapsed / durationMs, 1)
+        // ease-in-out cubic — visibly keeps moving until the very end
+        const eased = progress < 0.5
+          ? 4 * Math.pow(progress, 3)
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2
+        setAnimated(eased * score)
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(tick)
+        } else {
+          setAnimated(score)
+          setDone(true)
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }, startMs)
+
+    return () => {
+      clearTimeout(timeout)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [score, delay, duration])
+
+  const dashoffset = circumference - (Math.min(animated, 100) / 100) * circumference
+  const displayScore = Math.round(animated)
 
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative" style={{ width: size, height: size }}>
-        <svg
-          viewBox="0 0 100 100"
-          className="w-full h-full -rotate-90"
-        >
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           {/* Background track */}
           <circle
             cx="50" cy="50" r={radius}
@@ -39,8 +72,6 @@ export default function ScoreGauge({ score = 0, classification = 'Regular', size
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={dashoffset}
-            className="gauge-animated transition-all duration-1000"
-            style={{ '--gauge-offset': dashoffset }}
           />
         </svg>
 
@@ -53,8 +84,11 @@ export default function ScoreGauge({ score = 0, classification = 'Regular', size
         </div>
       </div>
 
-      {/* Classification badge */}
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ring-1 ${config.bg} ${config.color} ${config.ring}`}>
+      {/* Classification badge — aparece só quando a animação termina */}
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ring-1 ${config.bg} ${config.color} ${config.ring} transition-opacity duration-500`}
+        style={{ opacity: done ? 1 : 0 }}
+      >
         {classification}
       </span>
     </div>

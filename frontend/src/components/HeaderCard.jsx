@@ -205,7 +205,7 @@ function ExplanationSection({ title, content, defaultOpen = false }) {
  * HeaderCard — Card expansível para um security header individual.
  * Renderiza explicações estruturadas com seções colapsáveis, exemplos de código e syntax highlighting.
  */
-export default function HeaderCard({ header, explanation }) {
+export default function HeaderCard({ header, explanation, aiLoading = false }) {
   const [open, setOpen] = useState(false)
 
   const severity = header.severity || 'info'
@@ -248,12 +248,18 @@ export default function HeaderCard({ header, explanation }) {
           </p>
         </div>
 
-        {/* Sections count badge */}
-        {sections.length > 0 && (
+        {/* Sections count badge / loading indicator */}
+        {sections.length > 0 ? (
           <span className="text-xs text-surface-500 bg-surface-800/60 px-2 py-0.5 rounded-md shrink-0">
             {sections.length} seções
           </span>
-        )}
+        ) : aiLoading ? (
+          <span className="flex items-center gap-1.5 text-xs text-surface-600 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-500/60 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-500/40 animate-pulse [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-500/20 animate-pulse [animation-delay:300ms]" />
+          </span>
+        ) : null}
 
         {/* Expand chevron */}
         <ChevronDown
@@ -300,7 +306,7 @@ export default function HeaderCard({ header, explanation }) {
               )}
 
               {/* LLM explanation — structured sections */}
-              {sections.length > 0 && (
+              {sections.length > 0 ? (
                 <div className="space-y-2 pt-1">
                   <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">
                     {hasIssues ? 'Análise detalhada da IA' : 'Feedback de segurança'}
@@ -314,7 +320,18 @@ export default function HeaderCard({ header, explanation }) {
                     />
                   ))}
                 </div>
-              )}
+              ) : aiLoading ? (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider animate-pulse">
+                    Análise da IA
+                  </p>
+                  <div className="space-y-2 animate-pulse">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-9 bg-surface-800/60 rounded-lg border border-surface-700/30" />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </motion.div>
         )}

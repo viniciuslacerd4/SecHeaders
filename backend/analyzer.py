@@ -31,6 +31,7 @@ class HeaderResult:
     value: str | None = None
     issues: list[str] = field(default_factory=list)
     severity: Severity = "info"
+    earned_fraction: float | None = None  # Quando definido, substitui a penalidade por severidade no scorer
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -100,7 +101,7 @@ async def fetch_headers(url: str, timeout: float = 10.0) -> dict[str, str]:
 
 
 def _analyze_hsts(value: str | None) -> HeaderResult:
-    """Analisa Strict-Transport-Security."""
+    """Analisa Strict-Transport-Security com sub-scoring granular."""
     result = HeaderResult(name="Strict-Transport-Security", present=bool(value), value=value)
 
     if not value:
@@ -109,37 +110,60 @@ def _analyze_hsts(value: str | None) -> HeaderResult:
         return result
 
     val_lower = value.lower()
+    deduction = 0.0
 
     # Verifica max-age
     max_age_match = re.search(r"max-age=(\d+)", val_lower)
     if not max_age_match:
         result.issues.append("Diretiva 'max-age' ausente.")
-        result.severity = "high"
+        deduction += 0.60
     else:
         max_age = int(max_age_match.group(1))
         if max_age < 31536000:  # < 1 ano
             result.issues.append(
                 f"max-age={max_age} é menor que o recomendado (31536000 = 1 ano)."
             )
-            result.severity = "medium"
+            deduction += 0.30
 
     # Verifica includeSubDomains
     if "includesubdomains" not in val_lower:
-        result.issues.append("Diretiva 'includeSubDomains' ausente.")
-        if result.severity == "info":
-            result.severity = "low"
+        result.issues.append("Diretiva 'includeSubDomains' ausente — subdomínios não forçam HTTPS.")
+        deduction += 0.15
 
-    # Verifica preload
+    # Verifica preload (nice-to-have)
     if "preload" not in val_lower:
-        result.issues.append("Diretiva 'preload' ausente (recomendado).")
-        if result.severity == "info":
-            result.severity = "low"
+        result.issues.append("Diretiva 'preload' ausente — site não está na lista HSTS preload dos navegadores.")
+        deduction += 0.10
+
+    result.earned_fraction = round(max(0.0, 1.0 - deduction), 4)
+
+    if deduction >= 0.60:
+        result.severity = "high"
+    elif deduction >= 0.30:
+        result.severity = "medium"
+    elif deduction > 0:
+        result.severity = "low"
+    else:
+        result.severity = "info"
 
     return result
 
 
+def _parse_csp_directives(value: str) -> dict[str, list[str]]:
+    """Parseia um CSP em {nome_diretiva: [tokens]} para análise granular."""
+    directives: dict[str, list[str]] = {}
+    for part in value.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        tokens = part.lower().split()
+        if tokens:
+            directives[tokens[0]] = tokens[1:]
+    return directives
+
+
 def _analyze_csp(value: str | None) -> HeaderResult:
-    """Analisa Content-Security-Policy."""
+    """Analisa Content-Security-Policy com sub-scoring granular por diretiva."""
     result = HeaderResult(name="Content-Security-Policy", present=bool(value), value=value)
 
     if not value:
@@ -147,39 +171,102 @@ def _analyze_csp(value: str | None) -> HeaderResult:
         result.severity = "critical"
         return result
 
-    val_lower = value.lower()
+    dirs = _parse_csp_directives(value)
+    deduction = 0.0
 
-    # Verifica diretivas mínimas recomendadas
-    essential_directives = ["default-src", "script-src", "object-src"]
-    missing = [d for d in essential_directives if d not in val_lower]
-    if missing:
+    def effective(directive: str) -> list[str]:
+        """Retorna tokens da diretiva ou fallback para default-src."""
+        return dirs.get(directive) or dirs.get("default-src", [])
+
+    # ── Diretivas essenciais ─────────────────────────────────
+    has_default = "default-src" in dirs
+    has_script = "script-src" in dirs
+    has_object = "object-src" in dirs
+
+    if not has_default:
+        result.issues.append("Diretiva 'default-src' ausente — sem fallback para origens não especificadas.")
+        deduction += 0.20
+
+    if not has_script and not has_default:
+        result.issues.append("Diretiva 'script-src' ausente e sem 'default-src' como fallback.")
+        deduction += 0.15
+
+    if not has_object and not has_default:
+        result.issues.append("Diretiva 'object-src' ausente — plugins (Flash, Java) sem restrição.")
+        deduction += 0.10
+
+    # ── unsafe-inline por diretiva ───────────────────────────
+    script_src = effective("script-src")
+    style_src = effective("style-src")
+
+    if "'unsafe-inline'" in script_src:
         result.issues.append(
-            f"Diretivas essenciais ausentes: {', '.join(missing)}."
+            "Uso de 'unsafe-inline' em 'script-src' — alto risco de XSS via scripts inline."
         )
+        deduction += 0.28
+
+    if "'unsafe-inline'" in style_src and "'unsafe-inline'" not in effective("script-src"):
+        result.issues.append(
+            "Uso de 'unsafe-inline' em 'style-src' — permite estilos inline (risco baixo de CSS injection)."
+        )
+        deduction += 0.08
+
+    # ── unsafe-eval por diretiva ─────────────────────────────
+    if "'unsafe-eval'" in script_src:
+        result.issues.append(
+            "Uso de 'unsafe-eval' em 'script-src' — permite execução dinâmica de código (eval, Function)."
+        )
+        deduction += 0.20
+
+    if "'unsafe-eval'" in style_src:
+        result.issues.append("Uso de 'unsafe-eval' em 'style-src'.")
+        deduction += 0.05
+
+    # ── Wildcard (*) por diretiva ────────────────────────────
+    HIGH_IMPACT = {"script-src", "default-src", "object-src"}
+    for dname, tokens in dirs.items():
+        if "*" in tokens:
+            if dname in HIGH_IMPACT:
+                result.issues.append(
+                    f"Wildcard '*' em '{dname}' — qualquer origem permitida para scripts/recursos críticos."
+                )
+                deduction += 0.30
+            else:
+                result.issues.append(
+                    f"Wildcard '*' em '{dname}' — relaxa política de origens para este tipo de recurso."
+                )
+                deduction += 0.10
+
+    # ── Diretivas recomendadas ───────────────────────────────
+    if "frame-ancestors" not in dirs:
+        result.issues.append(
+            "Diretiva 'frame-ancestors' ausente — clickjacking não mitigado via CSP."
+        )
+        deduction += 0.08
+
+    if "base-uri" not in dirs:
+        result.issues.append(
+            "Diretiva 'base-uri' ausente — vulnerável a ataques de base tag injection."
+        )
+        deduction += 0.04
+
+    # ── Earned fraction e severidade de badge ───────────────
+    result.earned_fraction = round(max(0.0, 1.0 - deduction), 4)
+
+    script_has_eval = "'unsafe-eval'" in script_src
+    script_has_wildcard = any(
+        "*" in (dirs.get(d, [])) for d in HIGH_IMPACT if d in dirs
+    )
+    script_has_inline = "'unsafe-inline'" in script_src
+
+    if script_has_eval or script_has_wildcard:
         result.severity = "high"
-
-    # Verifica uso de unsafe-inline
-    if "unsafe-inline" in val_lower:
-        result.issues.append(
-            "Uso de 'unsafe-inline' detectado — enfraquece a proteção contra XSS."
-        )
-        if result.severity in ("info", "low"):
-            result.severity = "medium"
-
-    # Verifica uso de unsafe-eval
-    if "unsafe-eval" in val_lower:
-        result.issues.append(
-            "Uso de 'unsafe-eval' detectado — permite execução dinâmica de código."
-        )
-        if result.severity in ("info", "low"):
-            result.severity = "high"
-
-    # Verifica wildcard
-    if re.search(r"(^|\s)\*(\s|;|$)", val_lower):
-        result.issues.append(
-            "Uso de wildcard '*' detectado — permite carregamento de recursos de qualquer origem."
-        )
-        result.severity = "high"
+    elif script_has_inline or deduction > 0.30:
+        result.severity = "medium"
+    elif deduction > 0:
+        result.severity = "low"
+    else:
+        result.severity = "info"
 
     return result
 
@@ -226,17 +313,17 @@ def _analyze_x_content_type_options(value: str | None) -> HeaderResult:
 
 
 def _analyze_referrer_policy(value: str | None) -> HeaderResult:
-    """Analisa Referrer-Policy."""
+    """Analisa Referrer-Policy com sub-scoring granular."""
     result = HeaderResult(name="Referrer-Policy", present=bool(value), value=value)
 
     if not value:
-        result.issues.append("Header Referrer-Policy ausente.")
+        result.issues.append("Header Referrer-Policy ausente — navegador usa política padrão (pode vazar URLs).")
         result.severity = "medium"
+        result.earned_fraction = 0.50
         return result
 
     val_lower = value.strip().lower()
 
-    # Valores restritivos (seguros)
     restrictive = {
         "no-referrer",
         "same-origin",
@@ -244,26 +331,29 @@ def _analyze_referrer_policy(value: str | None) -> HeaderResult:
         "strict-origin-when-cross-origin",
         "no-referrer-when-downgrade",
     }
-
-    # Valores inseguros
     insecure = {"unsafe-url"}
 
     if val_lower in insecure:
         result.issues.append(
-            "Valor 'unsafe-url' envia a URL completa como referrer — risco de vazamento de dados."
+            "Valor 'unsafe-url' envia a URL completa como referrer — alto risco de vazamento de dados sensíveis."
         )
         result.severity = "high"
+        result.earned_fraction = 0.25
     elif val_lower not in restrictive:
         result.issues.append(
             f"Valor '{value}' pode não ser restritivo o suficiente."
         )
         result.severity = "low"
+        result.earned_fraction = 0.80
+    else:
+        result.severity = "info"
+        result.earned_fraction = 1.0
 
     return result
 
 
 def _analyze_permissions_policy(value: str | None) -> HeaderResult:
-    """Analisa Permissions-Policy."""
+    """Analisa Permissions-Policy com sub-scoring granular."""
     result = HeaderResult(
         name="Permissions-Policy", present=bool(value), value=value
     )
@@ -271,62 +361,73 @@ def _analyze_permissions_policy(value: str | None) -> HeaderResult:
     if not value:
         result.issues.append("Header Permissions-Policy ausente.")
         result.severity = "medium"
+        result.earned_fraction = 0.50
         return result
 
-    # Verifica se há pelo menos alguma restrição definida
-    if "=" not in value:
-        result.issues.append(
-            "Permissions-Policy presente mas sem diretivas válidas."
-        )
-        result.severity = "medium"
+    deduction = 0.0
 
-    # Verifica se features sensíveis estão restritas
+    if "=" not in value:
+        result.issues.append("Permissions-Policy presente mas sem diretivas válidas.")
+        deduction += 0.30
+
     sensitive_features = ["camera", "microphone", "geolocation"]
     val_lower = value.lower()
-    unrestricted = []
-    for feat in sensitive_features:
-        # Se a feature aparece com =(*)  significa habilitada para todos
-        if re.search(rf"{feat}=\(\*\)", val_lower):
-            unrestricted.append(feat)
+    unrestricted = [
+        feat for feat in sensitive_features
+        if re.search(rf"{feat}=\(\*\)", val_lower)
+    ]
 
     if unrestricted:
         result.issues.append(
             f"Features sensíveis sem restrição: {', '.join(unrestricted)}."
         )
-        result.severity = "medium"
+        deduction += 0.15 * len(unrestricted)
+
+    result.earned_fraction = round(max(0.0, 1.0 - deduction), 4)
+    result.severity = "medium" if deduction > 0.15 else ("low" if deduction > 0 else "info")
 
     return result
 
 
 def _analyze_set_cookie(value: str | None) -> HeaderResult:
-    """Analisa flags de segurança de Set-Cookie."""
+    """Analisa flags de segurança de Set-Cookie com sub-scoring granular."""
     result = HeaderResult(name="Set-Cookie", present=bool(value), value=value)
 
     if not value:
-        # Não ter Set-Cookie não é necessariamente um problema
         result.issues.append("Nenhum cookie definido na resposta (não é um problema por si só).")
         result.severity = "info"
+        result.earned_fraction = 1.0
         return result
 
     val_lower = value.lower()
+    deduction = 0.0
 
     if "secure" not in val_lower:
         result.issues.append("Flag 'Secure' ausente — cookie pode ser transmitido via HTTP.")
-        result.severity = "high"
+        deduction += 0.40
 
     if "httponly" not in val_lower:
         result.issues.append(
             "Flag 'HttpOnly' ausente — cookie acessível via JavaScript (risco de XSS)."
         )
-        if result.severity in ("info", "low"):
-            result.severity = "medium"
+        deduction += 0.25
 
     if "samesite" not in val_lower:
         result.issues.append(
             "Flag 'SameSite' ausente — cookie pode ser enviado em requisições cross-site (risco de CSRF)."
         )
-        if result.severity in ("info", "low"):
-            result.severity = "medium"
+        deduction += 0.20
+
+    result.earned_fraction = round(max(0.0, 1.0 - deduction), 4)
+
+    if deduction >= 0.40:
+        result.severity = "high"
+    elif deduction >= 0.20:
+        result.severity = "medium"
+    elif deduction > 0:
+        result.severity = "low"
+    else:
+        result.severity = "info"
 
     return result
 
