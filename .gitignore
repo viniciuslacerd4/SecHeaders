@@ -289,7 +289,8 @@ cython_debug/
 # =========================
 # SecHeaders — Dados locais
 # =========================
-backend/data/
+backend/data/*
+!backend/data/SecHeaders.png
 !backend/.env.example
 
 # =========================

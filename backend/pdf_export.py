@@ -28,10 +28,39 @@ from reportlab.lib.utils import ImageReader
 #  Logo do documento
 # ──────────────────────────────────────────────
 
+_LOGO_FALLBACK_URL = "https://sec-headers.vercel.app/SecHeaders.png"
+
+
 def _load_document_logo() -> ImageReader | None:
+    """
+    Carrega a logo para o PDF.
+    Tenta primeiro o arquivo local; se não existir, busca da URL pública.
+    Composita sobre fundo branco para garantir renderização correta no PDF.
+    """
+    import urllib.request
+    from PIL import Image
+
     png_path = Path(__file__).parent / "data" / "SecHeaders.png"
+
+    def _process(img: "Image.Image") -> ImageReader:
+        img = img.convert("RGBA")
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img, mask=img.split()[3])
+        buf = io.BytesIO()
+        bg.save(buf, format="PNG")
+        buf.seek(0)
+        return ImageReader(buf)
+
+    # 1. Tenta arquivo local
     try:
-        return ImageReader(str(png_path))
+        return _process(Image.open(png_path))
+    except Exception:
+        pass
+
+    # 2. Fallback: busca da URL pública
+    try:
+        with urllib.request.urlopen(_LOGO_FALLBACK_URL, timeout=5) as resp:
+            return _process(Image.open(io.BytesIO(resp.read())))
     except Exception:
         return None
 
@@ -208,7 +237,7 @@ def _draw_header_footer(canvas, doc):
 
     # ════════════ HEADER ════════════
     header_y = page_h - 16 * mm
-    icon_size = 18
+    icon_size = 22
 
     # Logo mini
     if _DOCUMENT_LOGO:
@@ -216,13 +245,18 @@ def _draw_header_footer(canvas, doc):
             _DOCUMENT_LOGO,
             margin_x, header_y - icon_size / 2,
             width=icon_size, height=icon_size,
-            preserveAspectRatio=True, mask="auto",
+            preserveAspectRatio=True,
         )
 
-    # Texto "SecHeaders" ao lado do ícone
+    # Texto "Sec" em roxo (primary-400: #818cf8) + "Headers" em escuro
+    text_x = margin_x + icon_size + 5
+    text_y = header_y - 3.5
     canvas.setFont("Helvetica-Bold", 10)
+    canvas.setFillColor(colors.Color(0.506, 0.549, 0.973))   # #818cf8
+    canvas.drawString(text_x, text_y, "Sec")
+    sec_width = canvas.stringWidth("Sec", "Helvetica-Bold", 10)
     canvas.setFillColor(colors.Color(0.2, 0.2, 0.25))
-    canvas.drawString(margin_x + icon_size + 5, header_y - 3.5, "SecHeaders")
+    canvas.drawString(text_x + sec_width, text_y, "Headers")
 
     # Linha fina separadora
     canvas.setStrokeColor(colors.Color(0.82, 0.82, 0.88))
@@ -251,7 +285,7 @@ def _draw_header_footer(canvas, doc):
             _DOCUMENT_LOGO,
             start_x, footer_y - footer_icon_size / 2 - 1,
             width=footer_icon_size, height=footer_icon_size,
-            preserveAspectRatio=True, mask="auto",
+            preserveAspectRatio=True,
         )
 
     canvas.setFillColor(colors.Color(0.45, 0.45, 0.5))

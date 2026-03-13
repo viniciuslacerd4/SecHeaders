@@ -5,7 +5,7 @@ import { exportPdf, downloadBlob } from '../lib/api'
 /**
  * ExportButton — Botão para exportar análise em PDF.
  */
-export default function ExportButton({ analysisId, url }) {
+export default function ExportButton({ analysisId, url, aiLoading = false }) {
   const [loading, setLoading] = useState(false)
 
   async function handleExport() {
@@ -22,13 +22,17 @@ export default function ExportButton({ analysisId, url }) {
     }
   }
 
+  const isDisabled = loading || aiLoading || !analysisId
+  const showSpinner = loading || aiLoading
+
   return (
     <button
       onClick={handleExport}
-      disabled={loading || !analysisId}
+      disabled={isDisabled}
+      title={aiLoading ? 'Aguardando relatório da IA…' : undefined}
       className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-800 border border-surface-700/60 text-surface-300 hover:text-surface-100 hover:border-surface-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium transition-all duration-200"
     >
-      {loading ? (
+      {showSpinner ? (
         <Loader2 className="w-4 h-4 animate-spin" />
       ) : (
         <FileDown className="w-4 h-4" />
