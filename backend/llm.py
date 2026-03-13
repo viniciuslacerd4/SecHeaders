@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+import re
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -106,6 +107,58 @@ NÃO adicione rodapés, assinaturas, dados de contato fictícios, frases de ence
 
 
 # ──────────────────────────────────────────────
+#  Seções fixas esperadas
+# ──────────────────────────────────────────────
+
+HEADER_SECTIONS = [
+    "O que é este header",
+    "Risco real",
+    "Exemplos de ataque",
+    "Como corrigir",
+    "Teste de validação",
+]
+
+SUMMARY_SECTIONS = [
+    "Visão geral",
+    "Vulnerabilidades críticas",
+    "Superfície de ataque",
+    "Plano de correção prioritizado",
+    "Checklist de validação Blue Team",
+]
+
+
+def _normalize_sections(text: str, expected: list[str]) -> str:
+    """
+    Garante que o texto tenha EXATAMENTE as seções esperadas, na ordem correta.
+    Usa matching case-insensitive para tolerar variações de capitalização do LLM.
+    Seções ausentes recebem um placeholder; seções extras são descartadas.
+    """
+    # Extrai todas as seções presentes usando ## como delimitador
+    pattern = re.compile(r"^##\s+(.+)", re.MULTILINE)
+    matches = list(pattern.finditer(text))
+
+    parsed: dict[str, str] = {}
+    for i, match in enumerate(matches):
+        title = match.group(1).strip()
+        start = match.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        content = text[start:end].strip()
+        parsed[title.lower()] = (title, content)
+
+    # Reconstrói com as seções exatas, na ordem correta
+    parts: list[str] = []
+    for section in expected:
+        key = section.lower()
+        if key in parsed:
+            _, content = parsed[key]
+            parts.append(f"## {section}\n{content}")
+        else:
+            parts.append(f"## {section}\n_Informação não disponível para este header._")
+
+    return "\n\n".join(parts)
+
+
+# ──────────────────────────────────────────────
 #  Chamadas ao LLM
 # ──────────────────────────────────────────────
 
@@ -180,7 +233,7 @@ async def explain_header(
     )
 
     try:
-        explanation = await _call_llm(prompt)
+        explanation = _normalize_sections(await _call_llm(prompt), HEADER_SECTIONS)
         _cache[key] = explanation
         return explanation
     except Exception:
@@ -225,7 +278,7 @@ async def generate_summary(
     )
 
     try:
-        summary = await _call_llm(prompt, max_tokens=6000)
+        summary = _normalize_sections(await _call_llm(prompt, max_tokens=6000), SUMMARY_SECTIONS)
         return summary
     except Exception:
         return _fallback_summary(url, score, classification, headers_data)
@@ -387,7 +440,6 @@ def _ok_explanation(header_name: str, header_value: str | None = None) -> str:
 ## Risco real
 {ok_data["risk_without"]}"""
 
-    # Fallback genérico se o header não está nos dicionários
     return f"""## Tudo certo
 ✅ O header **{header_name}** está configurado corretamente.{value_info}
 
