@@ -1,12 +1,16 @@
-# 🛡️ SecHeaders
+<div align="center">
+  <img src="frontend/public/SecHeaders.png" alt="SecHeaders" width="96" />
 
-> Ferramenta web para análise automatizada de segurança em cabeçalhos HTTP com explicações geradas por IA, armazenamento seguro de chaves e dashboard interativo.
+  # SecHeaders
 
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)
-![React](https://img.shields.io/badge/React-19+-61DAFB?style=flat&logo=react&logoColor=black)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat)
+  **Ferramenta web para análise automatizada de segurança em cabeçalhos HTTP com explicações geradas por IA, trilha de aprendizado interativa e dashboard completo.**
+
+  ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)
+  ![React](https://img.shields.io/badge/React-19+-61DAFB?style=flat&logo=react&logoColor=black)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi&logoColor=white)
+  ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)
+  ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
+</div>
 
 ---
 
@@ -18,7 +22,7 @@ A ferramenta analisa os cabeçalhos HTTP de segurança de qualquer URL pública 
 
 ### O problema que resolve
 
-Ferramentas existentes como o `securityheaders.com` identificam problemas mas não explicam seu impacto real. O SecHeaders preenche essa lacuna: além de identificar, ele **ensina** o que está errado e como corrigir.
+Ferramentas existentes como o `securityheaders.com` identificam problemas mas não explicam seu impacto real. O SecHeaders preenche essa lacuna: além de identificar, ele **ensina** o que está errado, como corrigir e oferece uma trilha de aprendizado completa sobre Security Headers.
 
 ---
 
@@ -33,6 +37,7 @@ Ferramentas existentes como o `securityheaders.com` identificam problemas mas n�
 - ⚖️ **Comparação de URLs** — analisa duas URLs lado a lado com diff visual
 - 📄 **Exportação em PDF** — gera relatório completo com ReportLab (A4)
 - ⚡ **Cache inteligente** — cache em memória (SHA-256) para evitar chamadas duplicadas ao LLM
+- 📚 **Trilha de aprendizado** — roadmap estilo Duolingo com 12 lições, quizzes adaptativos (75% de aprovação), XP e progresso persistido
 - 🐳 **Docker Compose** — setup completo com hot reload para backend e frontend
 
 ---
@@ -57,11 +62,11 @@ Ferramentas existentes como o `securityheaders.com` identificam problemas mas n�
 SecHeaders/
 ├── docker-compose.yml          # Orquestração dos containers
 ├── backend/
-│   ├── Dockerfile              # Imagem Python do backend
+│   ├── Dockerfile
 │   ├── main.py                 # Entrypoint FastAPI + rotas
 │   ├── analyzer.py             # Lógica de análise de headers
 │   ├── scorer.py               # Cálculo do score (pesos + severidade)
-│   ├── llm.py                  # Integração multi-provider LLM + prompts + cache
+│   ├── llm.py                  # Integração multi-provider LLM + cache
 │   ├── crypto.py               # Criptografia Fernet para API keys
 │   ├── pdf_export.py           # Geração de PDF com ReportLab
 │   ├── database.py             # SQLAlchemy async + SQLite
@@ -69,29 +74,30 @@ SecHeaders/
 │   ├── requirements.txt
 │   └── data/                   # SQLite DB + chave de criptografia
 ├── frontend/
-│   ├── Dockerfile              # Imagem Node do frontend
-│   ├── vite.config.js          # Configuração Vite + proxy API
+│   ├── Dockerfile
+│   ├── vite.config.js
 │   ├── package.json
-│   ├── src/
-│   │   ├── App.jsx             # Router principal
-│   │   ├── main.jsx            # Entrypoint React
-│   │   ├── index.css           # Estilos Tailwind
-│   │   ├── components/
-│   │   │   ├── AISettingsModal.jsx  # Modal de configuração de IA
-│   │   │   ├── ExportButton.jsx     # Botão de exportar PDF
-│   │   │   ├── HeaderCard.jsx       # Card de header analisado
-│   │   │   ├── Layout.jsx           # Layout com navbar e footer
-│   │   │   ├── Logo.jsx             # Logo SVG
-│   │   │   └── ScoreGauge.jsx       # Gauge visual do score
-│   │   ├── lib/
-│   │   │   ├── api.js          # Client API + gerenciamento de device/keys
-│   │   │   └── utils.js        # Helpers (formatDate, severityConfig, etc.)
-│   │   └── pages/
-│   │       ├── Home.jsx        # Página inicial com input de URL
-│   │       ├── Result.jsx      # Resultado da análise
-│   │       ├── History.jsx     # Histórico de análises
-│   │       └── Compare.jsx     # Comparação lado a lado
-│   └── public/
+│   └── src/
+│       ├── App.jsx             # Router principal
+│       ├── components/
+│       │   ├── AISettingsModal.jsx  # Modal de configuração de IA
+│       │   ├── AnalysisToast.jsx    # Toast de progresso de análise
+│       │   ├── ExportButton.jsx     # Botão de exportar PDF
+│       │   ├── HeaderCard.jsx       # Card de header analisado
+│       │   ├── Layout.jsx           # Layout com navbar e footer
+│       │   ├── Logo.jsx             # Logo do projeto
+│       │   └── ScoreGauge.jsx       # Gauge visual do score
+│       ├── data/
+│       │   └── learningData.js      # Dados da trilha (12 lições, 84 questões)
+│       ├── lib/
+│       │   ├── api.js          # Client API + gerenciamento de device/keys
+│       │   └── utils.js        # Helpers (formatDate, severityConfig, etc.)
+│       └── pages/
+│           ├── Home.jsx        # Análise de URL
+│           ├── Result.jsx      # Resultado da análise com relatório IA
+│           ├── History.jsx     # Histórico de análises
+│           ├── Compare.jsx     # Comparação lado a lado
+│           └── Learn.jsx       # Trilha de aprendizado interativa
 └── README.md
 ```
 
@@ -104,8 +110,8 @@ SecHeaders/
 Pré-requisitos: [Docker](https://www.docker.com/) e Docker Compose instalados.
 
 ```bash
-git clone https://github.com/seu-usuario/secheaders.git
-cd secheaders
+git clone https://github.com/viniciuslacerd4/SecHeaders.git
+cd SecHeaders
 docker compose up -d --build
 ```
 
@@ -121,20 +127,15 @@ Pronto. Acesse:
 > Você pode usar a IA imediatamente sem precisar configurar nenhuma API Key.
 > Para usar outro provider (OpenAI, Anthropic, Gemini), configure pelo ícone ✨ na navbar.
 
-Para parar:
-
 ```bash
-docker compose down
+docker compose down   # parar
 ```
 
 ---
 
 ### Opção 2 — Manual (sem Docker)
 
-#### Pré-requisitos
-
-- Python 3.11+
-- Node.js 18+
+**Pré-requisitos:** Python 3.11+ e Node.js 18+
 
 #### Backend
 
@@ -145,7 +146,7 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
-Crie um arquivo `.env` (opcional, já possui padrão gratuito):
+Crie um arquivo `.env` (opcional — possui padrão gratuito):
 
 ```env
 LLM_PROVIDER=openrouter
@@ -157,8 +158,6 @@ LLM_MODEL=stepfun/step-3.5-flash:free
 uvicorn main:app --reload
 ```
 
-Backend disponível em `http://localhost:8000`.
-
 #### Frontend
 
 ```bash
@@ -166,8 +165,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-Frontend disponível em `http://localhost:5173`.
 
 ---
 
@@ -188,15 +185,15 @@ Frontend disponível em `http://localhost:5173`.
 
 ### Gerenciamento de API Keys
 
-| Método   | Rota                               | Descrição                                  |
-| -------- | ---------------------------------- | ------------------------------------------ |
-| `POST`   | `/api-keys/store`                  | Armazena API key criptografada             |
-| `GET`    | `/api-keys/{device_id}`            | Lista keys do dispositivo (apenas hints)   |
-| `DELETE` | `/api-keys/{device_id}/{provider}` | Remove key de um provider                  |
-| `PUT`    | `/api-keys/model`                  | Atualiza modelo selecionado de um provider |
-| `POST`   | `/api-keys/models`                 | Lista modelos usando key armazenada        |
+| Método   | Rota                               | Descrição                                |
+| -------- | ---------------------------------- | ---------------------------------------- |
+| `POST`   | `/api-keys/store`                  | Armazena API key criptografada           |
+| `GET`    | `/api-keys/{device_id}`            | Lista keys do dispositivo (apenas hints) |
+| `DELETE` | `/api-keys/{device_id}/{provider}` | Remove key de um provider                |
+| `PUT`    | `/api-keys/model`                  | Atualiza modelo selecionado              |
+| `POST`   | `/api-keys/models`                 | Lista modelos usando key armazenada      |
 
-### Exemplo de requisição
+### Exemplo
 
 ```bash
 curl -X POST http://localhost:8000/analyze \
@@ -204,21 +201,17 @@ curl -X POST http://localhost:8000/analyze \
   -d '{"url": "https://exemplo.com"}'
 ```
 
-### Exemplo de resposta
-
 ```json
 {
   "url": "https://exemplo.com",
   "score": 45,
   "classification": "Regular",
-  "summary": "O site possui configurações básicas de segurança, mas está vulnerável a ataques de XSS e Clickjacking devido à ausência de CSP e X-Frame-Options.",
   "headers": [
     {
       "name": "Content-Security-Policy",
       "present": false,
       "severity": "critical",
-      "issues": ["Header ausente"],
-      "explanation": "A ausência do Content-Security-Policy deixa o site vulnerável a ataques de Cross-Site Scripting (XSS)..."
+      "explanation": "A ausência do CSP deixa o site vulnerável a ataques XSS..."
     }
   ]
 }
@@ -228,50 +221,34 @@ curl -X POST http://localhost:8000/analyze \
 
 ## 🧠 Como a IA é utilizada
 
-O SecHeaders suporta **4 providers de LLM**:
-
 | Provider       | Modelos                                | Observação                        |
 | -------------- | -------------------------------------- | --------------------------------- |
 | **OpenRouter** | `stepfun/step-3.5-flash:free` e outros | **Padrão do servidor** (gratuito) |
-| **OpenAI**     | GPT-4o, GPT-4, GPT-3.5-turbo, etc.     | Requer API Key                    |
+| **OpenAI**     | GPT-4o, GPT-4, GPT-3.5-turbo, etc.    | Requer API Key                    |
 | **Anthropic**  | Claude Sonnet, Haiku, Opus             | Requer API Key                    |
 | **Google**     | Gemini 2.0, 1.5, etc.                  | Requer API Key                    |
 
-### Configuração pela interface
-
-1. Clique no ícone **✨ IA** na navbar
-2. Selecione o provider desejado
-3. Cole sua API Key — ela será **criptografada no servidor** e nunca mais retornada
-4. Escolha o modelo
-5. Salve — um banner indica qual provider está ativo
-
-> **Sem configuração:** a IA padrão do servidor (OpenRouter gratuito) é usada automaticamente.
-> **Com configuração:** o provider selecionado tem prioridade sobre o padrão.
+Para cada header com problema, a IA gera uma análise estruturada com 5 seções: **O que é**, **Risco real**, **Exemplos de ataque**, **Como corrigir** e **Teste de validação**. Além disso, gera um **Relatório Executivo** completo.
 
 ### Segurança das API Keys
 
-- As chaves são criptografadas com **Fernet** (AES-128-CBC + HMAC-SHA256) antes de serem armazenadas
-- A chave de criptografia é gerada automaticamente na primeira execução (`data/.encryption_key`, chmod 600)
-- O frontend nunca recebe a chave real — apenas um hint (`•••` + últimos 4 caracteres)
-- As chaves são isoladas por **device_id** (UUID gerado por dispositivo/navegador)
+- Criptografadas com **Fernet** (AES-128-CBC + HMAC-SHA256) antes de serem armazenadas
+- Chave de criptografia gerada automaticamente na primeira execução (`data/.encryption_key`)
+- Frontend nunca recebe a chave real — apenas hint (`•••` + últimos 4 caracteres)
+- Isoladas por **device_id** (UUID por dispositivo/navegador)
 
-### Resolução de LLM (prioridade)
+---
 
-1. API Key direta no header (legacy)
-2. Device ID + provider → descriptografa chave armazenada no banco
-3. Fallback → LLM padrão do servidor (variáveis de ambiente)
+## 📚 Trilha de Aprendizado
 
-### O que a IA gera
+A página **Aprender** oferece um roadmap interativo com:
 
-Para cada header com problema, a IA gera uma análise estruturada com **5 seções**:
-
-1. **O que é este header** — explicação didática
-2. **Risco real** — impacto concreto da vulnerabilidade
-3. **Exemplos de ataque** — comandos reproduzíveis em ambiente controlado
-4. **Como corrigir** — configurações para Nginx, Apache, Node.js, etc.
-5. **Teste de validação** — comandos para verificar a correção
-
-Além disso, gera um **Relatório Executivo** com visão geral, vulnerabilidades críticas, superfície de ataque e plano de correção priorizado.
+- **4 módulos** progressivos (Fundamentos → Transporte → Cross-Origin → Cache)
+- **12 lições** cobrindo todos os Security Headers analisados
+- **84 questões** no total — 7 por lição, 5 sorteadas aleatoriamente a cada tentativa
+- **Sistema de aprovação** — mínimo 75% de acertos para concluir a lição
+- **XP e progresso** persistidos no `localStorage`
+- Desbloqueio sequencial: módulo seguinte só abre após completar o anterior
 
 ---
 
@@ -295,23 +272,17 @@ Além disso, gera um **Relatório Executivo** com visão geral, vulnerabilidades
 
 ### Frontend
 
-| Tecnologia               | Versão | Uso                      |
-| ------------------------ | ------ | ------------------------ |
-| React                    | 19.0   | UI framework             |
-| Vite                     | 6.0    | Build tool + HMR         |
-| Tailwind CSS             | 4.0    | Estilização              |
-| Framer Motion            | 11.15  | Animações                |
-| Lucide React             | 0.468  | Ícones                   |
-| React Router DOM         | 7.1    | Roteamento SPA           |
-| React Markdown           | 10.1   | Renderização de Markdown |
-| React Syntax Highlighter | 16.1   | Highlight de código      |
-| Recharts                 | 2.15   | Gráficos                 |
-
----
-
-## 📸 Screenshots
-
-> _Em breve_
+| Tecnologia               | Versão | Uso                        |
+| ------------------------ | ------ | -------------------------- |
+| React                    | 19.0   | UI framework               |
+| Vite                     | 6.0    | Build tool + HMR           |
+| Tailwind CSS             | 4.0    | Estilização                |
+| Framer Motion            | 11.15  | Animações                  |
+| Phosphor Icons           | 2.1.10 | Biblioteca de ícones       |
+| React Router DOM         | 7.1    | Roteamento SPA             |
+| React Markdown           | 10.1   | Renderização de Markdown   |
+| React Syntax Highlighter | 16.1   | Highlight de código        |
+| Recharts                 | 2.15   | Gráficos                   |
 
 ---
 
@@ -329,6 +300,7 @@ Além disso, gera um **Relatório Executivo** com visão geral, vulnerabilidades
 - [x] Armazenamento seguro de API Keys (Fernet)
 - [x] Modal de configuração de IA com gerenciamento de providers
 - [x] Cache de chamadas LLM
+- [x] Trilha de aprendizado interativa (12 lições, quizzes, XP)
 - [ ] Testes automatizados e validação
 
 ---
@@ -344,9 +316,8 @@ Além disso, gera um **Relatório Executivo** com visão geral, vulnerabilidades
 
 ## 🎓 Contexto Acadêmico
 
-Este projeto foi desenvolvido como TCC I do curso de **Sistemas de Informação**.
-
 **Aluno:** Vinícius Lacerda Borges
+**Curso:** Sistemas de Informação
 **Instituição:** UNIFAP — Universidade Federal do Amapá
 **Período:** 2026.1
 
