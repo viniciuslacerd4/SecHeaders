@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  GitCompareArrows,
+  ArrowsLeftRight,
   Globe,
   ArrowRight,
-  CheckCircle2,
+  CheckCircle,
   XCircle,
-  AlertTriangle,
+  Warning,
   Minus,
-} from 'lucide-react'
+  CircleNotch,
+} from '@phosphor-icons/react'
 import { analyzeUrl } from '../lib/api'
 import ScoreGauge from '../components/ScoreGauge'
 import { SEVERITY_CONFIG, cleanUrl } from '../lib/utils'
@@ -48,7 +49,7 @@ export default function Compare() {
     >
       {/* Title */}
       <div className="flex items-center gap-3">
-        <GitCompareArrows className="w-5 h-5 text-primary-400" />
+        <ArrowsLeftRight className="w-5 h-5 text-primary-400" />
         <h1 className="text-xl font-bold text-surface-100">Comparar URLs</h1>
       </div>
 
@@ -84,10 +85,7 @@ export default function Compare() {
           >
             {loading ? (
               <>
-                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <CircleNotch className="animate-spin w-4 h-4" />
                 Comparando…
               </>
             ) : (
@@ -105,6 +103,51 @@ export default function Compare() {
           )}
         </div>
       </form>
+
+      {/* Empty state */}
+      {!results && !loading && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-center py-12 text-center"
+        >
+          {/* Two site cards hint */}
+          <div className="relative mb-8 flex items-center gap-3">
+            <div className="absolute inset-0 bg-primary-500/5 blur-3xl pointer-events-none rounded-full" />
+            {['URL A', 'URL B'].map((label, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.1 }}
+                className="w-28 h-20 rounded-2xl flex flex-col items-center justify-center gap-2"
+                style={{
+                  background: 'linear-gradient(145deg, rgba(99,102,241,0.08), rgba(99,102,241,0.03))',
+                  border: '1px solid rgba(99,102,241,0.14)',
+                }}
+              >
+                <Globe className="w-5 h-5 text-primary-400/50" weight="thin" />
+                <span className="text-[10px] font-bold text-surface-600 uppercase tracking-widest">{label}</span>
+              </motion.div>
+            ))}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.25 }}
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
+              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)' }}
+            >
+              <ArrowsLeftRight className="w-3.5 h-3.5 text-primary-400" />
+            </motion.div>
+          </div>
+
+          <h3 className="text-xl font-bold text-surface-200 mb-3 tracking-tight">Compare dois sites</h3>
+          <p className="text-sm text-surface-500 max-w-[280px] leading-relaxed">
+            Insira duas URLs acima e veja o comparativo de Security Headers lado a lado.
+          </p>
+        </motion.div>
+      )}
 
       {/* Results */}
       {results && <CompareResults a={results.a} b={results.b} />}

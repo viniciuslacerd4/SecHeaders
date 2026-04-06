@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useParams, useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Globe, Clock, BarChart3, Sparkles, AlertCircle, Eye, ShieldAlert, Crosshair, Wrench, ClipboardList, BookOpen } from 'lucide-react'
+import { ArrowLeft, Globe, Clock, ChartBar, Sparkle, WarningCircle, Eye, ShieldWarning, Crosshair, Wrench, ClipboardText, BookOpen, Copy, CircleNotch } from '@phosphor-icons/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -17,10 +17,10 @@ const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info']
 
 const REPORT_SECTION_CONFIG = {
   'Visão geral':                    { icon: Eye,           color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20' },
-  'Vulnerabilidades críticas':      { icon: ShieldAlert,   color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20' },
+  'Vulnerabilidades críticas':      { icon: ShieldWarning, color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20' },
   'Superfície de ataque':           { icon: Crosshair,     color: 'text-orange-400',  bg: 'bg-orange-500/10',  border: 'border-orange-500/20' },
   'Plano de correção prioritizado': { icon: Wrench,        color: 'text-green-400',   bg: 'bg-green-500/10',   border: 'border-green-500/20' },
-  'Checklist de validação Blue Team': { icon: ClipboardList, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  'Checklist de validação Blue Team': { icon: ClipboardText, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
 }
 
 function parseReportSections(text) {
@@ -79,7 +79,7 @@ function ReportMarkdown({ content }) {
                   className="absolute top-2 right-2 p-1.5 rounded-md bg-surface-700/80 hover:bg-surface-600 text-surface-400 hover:text-surface-200 transition-all opacity-0 group-hover:opacity-100 z-10"
                   title="Copiar"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" strokeWidth="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" strokeWidth="2"/></svg>
+                  <Copy className="w-3.5 h-3.5" />
                 </button>
                 <SyntaxHighlighter
                   style={oneDark}
@@ -251,10 +251,7 @@ export default function Result() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
-        <svg className="animate-spin w-8 h-8 text-primary-400" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
+        <CircleNotch className="animate-spin w-8 h-8 text-primary-400" />
         <p className="text-surface-400 text-sm">Carregando análise…</p>
       </div>
     )
@@ -384,12 +381,12 @@ export default function Result() {
         {/* Section header */}
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-surface-800/60">
           <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary-600/15 border border-primary-500/20">
-            <BarChart3 className="w-3.5 h-3.5 text-primary-400" />
+            <ChartBar className="w-3.5 h-3.5 text-primary-400" />
           </div>
           <h2 className="font-semibold text-surface-200 text-sm">Relatório Executivo de Segurança</h2>
           {aiReport.loading && (
             <span className="flex items-center gap-1.5 ml-auto text-xs text-surface-500">
-              <Sparkles className="w-3.5 h-3.5 text-primary-400 animate-pulse" />
+              <Sparkle className="w-3.5 h-3.5 text-primary-400 animate-pulse" />
               Gerando com IA…
             </span>
           )}
@@ -403,7 +400,7 @@ export default function Result() {
               </motion.div>
             ) : aiReport.error ? (
               <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-sm text-red-400">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+                <WarningCircle className="w-4 h-4 shrink-0" />
                 {aiReport.error}
               </motion.div>
             ) : aiReport.summary ? (

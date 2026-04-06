@@ -1,14 +1,15 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Home, History, GitCompareArrows, Quote, Github } from 'lucide-react'
+import { House, ClockCounterClockwise, ArrowsLeftRight, Quotes, GithubLogo, BookOpen } from '@phosphor-icons/react'
 import AnalysisToast from './AnalysisToast'
 import { useAnalysis } from './AnalysisContext'
 import Logo from './Logo'
 
 const NAV_ITEMS = [
-  { to: '/', icon: Home, label: 'Início', hideOnMobile: true },
-  { to: '/history', icon: History, label: 'Histórico' },
-  { to: '/compare', icon: GitCompareArrows, label: 'Comparar' },
+  { to: '/', icon: House, label: 'Analisar', hideOnMobile: true },
+  { to: '/history', icon: ClockCounterClockwise, label: 'Histórico' },
+  { to: '/compare', icon: ArrowsLeftRight, label: 'Comparar' },
+  { to: '/learn', icon: BookOpen, label: 'Aprender' },
 ]
 
 export default function Layout() {
@@ -104,14 +105,14 @@ export default function Layout() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 mt-2 text-[11px] text-surface-400 hover:text-primary-400 transition-colors duration-200"
               >
-                <Github className="w-3.5 h-3.5" />
+                <GithubLogo className="w-3.5 h-3.5" />
                 github.com/viniciuslacerd4
               </a>
             </div>
 
             {/* Right – Quote */}
             <div className="text-left md:text-right max-w-full md:max-w-[280px] md:ml-auto">
-              <Quote className="w-4 h-4 text-primary-500/30 mb-2 hidden md:block md:ml-auto" />
+              <Quotes className="w-4 h-4 text-primary-500/30 mb-2 hidden md:block md:ml-auto" />
               <p className="text-[13px] text-surface-300/90 italic leading-[1.6] font-light">
                 "There are only two types of companies:
                 <br className="hidden sm:block" />

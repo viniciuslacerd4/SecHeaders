@@ -2,17 +2,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
-  Sparkles,
+  Sparkle,
   Check,
-  ChevronDown,
-  RefreshCw,
-  AlertCircle,
-  Zap,
-  Trash2,
+  CaretDown,
+  ArrowsClockwise,
+  WarningCircle,
+  Lightning,
+  Trash,
   Shield,
-  KeyRound,
-  Save,
-} from "lucide-react";
+  Key,
+  FloppyDisk,
+} from "@phosphor-icons/react";
 import {
   fetchLLMStatus,
   fetchModels,
@@ -317,7 +317,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
             <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary-600/15 border border-primary-500/20">
-                  <Sparkles className="w-5 h-5 text-primary-400" />
+                  <Sparkle className="w-5 h-5 text-primary-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-surface-100">
@@ -351,7 +351,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                     "border-primary-500/20"
                   }`}
                 >
-                  <Sparkles
+                  <Sparkle
                     className={`w-5 h-5 shrink-0 mt-0.5 ${
                       PROVIDERS.find((p) => p.id === activeProvider)?.color ||
                       "text-primary-400"
@@ -388,7 +388,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex items-start gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl"
                 >
-                  <Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <Lightning className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-emerald-300">
                       IA integrada ativa
@@ -456,7 +456,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
 
                         {isSaved && (
                           <span className="flex items-center gap-1.5 text-xs text-surface-400">
-                            <KeyRound className="w-3 h-3" />
+                            <Key className="w-3 h-3" />
                             <span className="font-mono">
                               {storedKeys[prov.id].hint}
                             </span>
@@ -480,7 +480,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                           </span>
                         )}
 
-                        <ChevronDown
+                        <CaretDown
                           className={`w-4 h-4 text-surface-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                         />
                       </button>
@@ -519,7 +519,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                         className="p-0.5 rounded text-surface-500 hover:text-primary-400 transition-colors disabled:opacity-40"
                                         title="Atualizar modelos"
                                       >
-                                        <RefreshCw
+                                        <ArrowsClockwise
                                           className={`w-3 h-3 ${modelsLoading ? "animate-spin" : ""}`}
                                         />
                                       </button>
@@ -549,12 +549,12 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                               "Carregando..."}
                                         </span>
                                         {models.length > 0 && (
-                                          <ChevronDown
+                                          <CaretDown
                                             className={`w-3.5 h-3.5 text-surface-500 transition-transform ${modelOpen ? "rotate-180" : ""}`}
                                           />
                                         )}
                                         {modelsLoading && (
-                                          <RefreshCw className="w-3.5 h-3.5 text-surface-400 animate-spin" />
+                                          <ArrowsClockwise className="w-3.5 h-3.5 text-surface-400 animate-spin" />
                                         )}
                                       </button>
 
@@ -603,7 +603,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
 
                                     {modelsError && (
                                       <div className="flex items-center gap-1.5 mt-1.5 text-xs text-red-400">
-                                        <AlertCircle className="w-3 h-3 shrink-0" />
+                                        <WarningCircle className="w-3 h-3 shrink-0" />
                                         <span>{modelsError}</span>
                                       </div>
                                     )}
@@ -616,7 +616,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                         onClick={() => handleSetActive(prov.id)}
                                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-primary-600/15 text-primary-300 hover:bg-primary-600/25 border border-primary-500/20 transition-colors"
                                       >
-                                        <Zap className="w-3.5 h-3.5" />
+                                        <Lightning className="w-3.5 h-3.5" />
                                         Usar este provider
                                       </button>
                                     ) : defaultLLM?.available ? (
@@ -624,7 +624,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                         onClick={handleUseDefault}
                                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
                                       >
-                                        <Zap className="w-3.5 h-3.5" />
+                                        <Lightning className="w-3.5 h-3.5" />
                                         Voltar à IA padrão
                                       </button>
                                     ) : null}
@@ -635,7 +635,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                         }
                                         className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-800 border border-surface-700/40 transition-colors"
                                       >
-                                        <KeyRound className="w-3.5 h-3.5" />
+                                        <Key className="w-3.5 h-3.5" />
                                         Trocar key
                                       </button>
                                       <button
@@ -643,7 +643,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                         disabled={deleting === prov.id}
                                         className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-surface-400 hover:text-red-400 hover:bg-red-500/10 border border-surface-700/40 hover:border-red-500/20 transition-colors disabled:opacity-40"
                                       >
-                                        <Trash2
+                                        <Trash
                                           className={`w-3.5 h-3.5 ${deleting === prov.id ? "animate-spin" : ""}`}
                                         />
                                         Remover
@@ -681,7 +681,7 @@ export default function AISettingsModal({ isOpen, onClose }) {
 
                                   {modelsError && (
                                     <div className="flex items-center gap-1.5 text-xs text-red-400">
-                                      <AlertCircle className="w-3 h-3 shrink-0" />
+                                      <WarningCircle className="w-3 h-3 shrink-0" />
                                       <span>{modelsError}</span>
                                     </div>
                                   )}
@@ -702,12 +702,12 @@ export default function AISettingsModal({ isOpen, onClose }) {
                                     >
                                       {saving ? (
                                         <>
-                                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                          <ArrowsClockwise className="w-3.5 h-3.5 animate-spin" />
                                           Validando e salvando...
                                         </>
                                       ) : (
                                         <>
-                                          <Save className="w-3.5 h-3.5" />
+                                          <FloppyDisk className="w-3.5 h-3.5" />
                                           Salvar key
                                         </>
                                       )}

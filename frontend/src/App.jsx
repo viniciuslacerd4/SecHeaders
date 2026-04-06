@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import Result from './pages/Result'
 import History from './pages/History'
 import Compare from './pages/Compare'
+import Learn from './pages/Learn'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/result/:id" element={<Result />} />
         <Route path="/history" element={<History />} />
         <Route path="/compare" element={<Compare />} />
+        <Route path="/learn" element={<Learn />} />
       </Route>
     </Routes>
   )

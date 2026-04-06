@@ -4,38 +4,38 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
-  ChevronDown,
-  CheckCircle2,
-  AlertTriangle,
+  CaretDown,
+  CheckCircle,
+  Warning,
   XCircle,
   Info,
-  ShieldAlert,
+  ShieldWarning,
   BookOpen,
   Crosshair,
   Wrench,
-  FlaskConical,
-  AlertOctagon,
+  Flask,
+  WarningOctagon,
   Copy,
   Check,
-} from 'lucide-react'
+} from '@phosphor-icons/react'
 import { SEVERITY_CONFIG } from '../lib/utils'
 
 const STATUS_ICONS = {
-  info: CheckCircle2,
+  info: CheckCircle,
   low: Info,
-  medium: AlertTriangle,
-  high: ShieldAlert,
+  medium: Warning,
+  high: ShieldWarning,
   critical: XCircle,
 }
 
 const SECTION_CONFIG = {
   'O que é este header': { icon: BookOpen, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  'Risco real': { icon: AlertOctagon, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+  'Risco real': { icon: WarningOctagon, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
   'Exemplos de ataque': { icon: Crosshair, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
   'Como corrigir': { icon: Wrench, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
-  'Teste de validação': { icon: FlaskConical, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-  'Tudo certo': { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  'Se não estivesse configurado': { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  'Teste de validação': { icon: Flask, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+  'Tudo certo': { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  'Se não estivesse configurado': { icon: Warning, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
 }
 
 /**
@@ -180,7 +180,7 @@ function ExplanationSection({ title, content, defaultOpen = false }) {
         <span className={`text-xs font-semibold uppercase tracking-wider ${config.color} flex-1`}>
           {title}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-surface-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <CaretDown className={`w-3.5 h-3.5 text-surface-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       <AnimatePresence>
         {open && (
@@ -210,7 +210,7 @@ export default function HeaderCard({ header, explanation, aiLoading = false }) {
 
   const severity = header.severity || 'info'
   const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.info
-  const StatusIcon = STATUS_ICONS[severity] || CheckCircle2
+  const StatusIcon = STATUS_ICONS[severity] || CheckCircle
   const hasIssues = header.issues?.length > 0 && severity !== 'info'
 
   const sections = parseExplanationSections(explanation)
@@ -262,7 +262,7 @@ export default function HeaderCard({ header, explanation, aiLoading = false }) {
         ) : null}
 
         {/* Expand chevron */}
-        <ChevronDown
+        <CaretDown
           className={`w-4 h-4 text-surface-500 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
         />
       </button>
