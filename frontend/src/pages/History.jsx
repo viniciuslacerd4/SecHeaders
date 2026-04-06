@@ -12,16 +12,18 @@ export default function History() {
   const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
-    getHistory(100)
-      .then(setAnalyses)
-      .catch(() => { })
-      .finally(() => setLoading(false))
+    // getHistory agora é síncrono (localStorage)
+    try {
+      const history = getHistory(100)
+      setAnalyses(history)
+    } catch { }
+    setLoading(false)
   }, [])
 
-  async function handleClearHistory() {
+  function handleClearHistory() {
     setClearing(true)
     try {
-      await clearHistory()
+      clearHistory()
       setAnalyses([])
     } catch { }
     setClearing(false)

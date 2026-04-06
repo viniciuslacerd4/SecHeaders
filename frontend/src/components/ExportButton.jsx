@@ -4,16 +4,17 @@ import { exportPdf, downloadBlob } from '../lib/api'
 
 /**
  * ExportButton — Botão para exportar análise em PDF.
+ * Agora recebe os dados completos da análise ao invés de apenas o ID.
  */
-export default function ExportButton({ analysisId, url, aiLoading = false }) {
+export default function ExportButton({ analysisData, aiLoading = false }) {
   const [loading, setLoading] = useState(false)
 
   async function handleExport() {
-    if (!analysisId) return
+    if (!analysisData) return
     setLoading(true)
     try {
-      const blob = await exportPdf(analysisId)
-      const cleanUrl = url?.replace(/^https?:\/\//, '').replace(/\//g, '_') || 'analysis'
+      const blob = await exportPdf(analysisData)
+      const cleanUrl = analysisData.url?.replace(/^https?:\/\//, '').replace(/\//g, '_') || 'analysis'
       downloadBlob(blob, `secheaders_${cleanUrl}.pdf`)
     } catch {
       alert('Erro ao gerar o PDF. Tente novamente.')
@@ -22,7 +23,7 @@ export default function ExportButton({ analysisId, url, aiLoading = false }) {
     }
   }
 
-  const isDisabled = loading || aiLoading || !analysisId
+  const isDisabled = loading || aiLoading || !analysisData
   const showSpinner = loading || aiLoading
 
   return (

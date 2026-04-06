@@ -213,40 +213,47 @@ export default function Result() {
       : { explanations: {}, summary: '', loading: false, error: '' }
   )
 
-  // Load from history if accessed by ID
+  // Load from history if accessed by ID (now sync from localStorage)
   useEffect(() => {
     if (!data && id) {
       setLoading(true)
-      getAnalysisDetail(id)
-        .then((result) => {
-          setData({ ...result, analysis_id: Number(id) })
+      try {
+        const result = getAnalysisDetail(id)
+        if (result) {
+          setData(result)
           const hasAi = !!(result.summary && result.explanations && Object.keys(result.explanations).length > 0)
           if (hasAi) {
             setAiReport({ explanations: result.explanations, summary: result.summary, loading: false, error: '' })
           }
-        })
-        .catch((err) => setError(err.message))
-        .finally(() => setLoading(false))
+        } else {
+          setError('Análise não encontrada no histórico.')
+        }
+      } catch (err) {
+        setError(err.message || 'Erro ao carregar análise.')
+      }
+      setLoading(false)
     }
   }, [id])
 
   // Fetch AI report in background after base data is available
   useEffect(() => {
-    const analysisId = data?.analysis_id
     const alreadyHasAi = !!(data?.summary && data?.explanations && Object.keys(data.explanations || {}).length > 0)
-    if (!analysisId || alreadyHasAi || aiReport.loading || aiReport.summary) return
+    if (!data || alreadyHasAi || aiReport.loading || aiReport.summary) return
 
     setAiReport((prev) => ({ ...prev, loading: true, error: '' }))
-    fetchAiReport(analysisId)
+    // Pass the full data object instead of just an ID
+    fetchAiReport(data)
       .then((report) => {
         setAiReport({ explanations: report.explanations, summary: report.summary, loading: false, error: '' })
+        // Update local data state too
+        setData((prev) => ({ ...prev, explanations: report.explanations, summary: report.summary }))
         if (!soundPlayedRef.current) {
           soundPlayedRef.current = true
           playHackSound()
         }
       })
       .catch((err) => setAiReport({ explanations: {}, summary: '', loading: false, error: err.message || 'Erro ao gerar relatório.' }))
-  }, [data?.analysis_id])
+  }, [data?.id])
 
   if (loading) {
     return (
@@ -271,7 +278,7 @@ export default function Result() {
     )
   }
 
-  const { url, headers, score, analysis_id, created_at } = data
+  const { url, headers, score, id: analysisId, created_at } = data
   const explanations = aiReport.explanations
   const sortedHeaders = Object.entries(headers).sort(
     ([, a], [, b]) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity)
@@ -290,6 +297,15 @@ export default function Result() {
   const gaugeDuration = (barCount - 1) * (BAR_DURATION + 0.05) + BAR_DURATION
   const gaugeDelay = BAR_BASE_DELAY
 
+  // Prepare full analysis data for export
+  const analysisDataForExport = {
+    url,
+    headers,
+    score,
+    explanations: aiReport.explanations,
+    summary: aiReport.summary,
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -307,7 +323,7 @@ export default function Result() {
           Nova análise
         </button>
 
-        <ExportButton analysisId={analysis_id} url={url} aiLoading={aiReport.loading} />
+        <ExportButton analysisData={analysisDataForExport} aiLoading={aiReport.loading} />
       </div>
 
       {/* ── Hero: Score + Info ── */}

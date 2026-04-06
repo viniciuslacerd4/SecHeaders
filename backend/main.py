@@ -1,52 +1,29 @@
 """
 main.py — Entrypoint da API FastAPI do SecHeaders.
 
+Versão sem banco de dados — todo o estado é gerenciado no frontend (localStorage).
+
 Rotas:
   GET  /health              → Healthcheck
   GET  /llm-status          → Status do LLM padrão
-  POST /analyze             → Análise completa de security headers
-  GET  /history             → Lista de análises anteriores
-  GET  /history/{id}        → Detalhes de uma análise específica
-  GET  /export/{id}         → Exportar análise em PDF
-  POST /api-keys/store      → Salvar API key criptografada
-  GET  /api-keys/{device}   → Listar keys salvas (apenas hints)
-  DELETE /api-keys/{d}/{p}  → Remover key de um provider
-  POST /api-keys/models     → Listar modelos usando key armazenada
+  POST /analyze             → Análise de security headers (retorna headers + score)
+  POST /report              → Gera relatório de IA a partir dos dados enviados
+  POST /export              → Exportar análise em PDF
 """
 
 from __future__ import annotations
 
-import json
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-
 import httpx
-from fastapi import FastAPI, HTTPException, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select, desc, delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
 
 from analyzer import analyze_url, AnalysisResult
-from crypto import encrypt_api_key, decrypt_api_key, get_key_hint
-from database import init_db, get_db
-from llm import explain_all_headers, generate_summary, has_default_llm, get_default_llm_info
-from models import Analysis, StoredAPIKey
+from llm import explain_all_headers, generate_summary, get_default_llm_info
 from pdf_export import generate_pdf
 from scorer import calculate_score, ScoreResult
-
-
-# ──────────────────────────────────────────────
-#  Lifespan (startup / shutdown)
-# ──────────────────────────────────────────────
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Inicializa banco de dados ao iniciar o servidor."""
-    await init_db()
-    yield
 
 
 # ──────────────────────────────────────────────
@@ -56,8 +33,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SecHeaders API",
     description="API para análise de Security Headers HTTP com LLM",
-    version="1.0.0",
-    lifespan=lifespan,
+    version="2.0.0",
 )
 
 # CORS — aceita requisições do frontend (dev local + produção Vercel)
@@ -74,7 +50,6 @@ if _frontend_url:
     _cors_origins.append(_frontend_url.rstrip("/"))
 
 # Regex para aceitar qualquer deploy do Vercel (preview + production)
-# Ex: https://sec-headers-abc123-user.vercel.app
 _cors_regex = r"https://sec-headers.*\.vercel\.app"
 
 app.add_middleware(
@@ -102,19 +77,15 @@ async def verify_api_secret(request: Request, call_next):
     Valida o header X-API-Secret em todas as requisições.
     Se API_SECRET não estiver definido no .env, permite tudo (dev local).
     """
-    # Se não configurou secret, permite tudo (retrocompatível)
     if not _API_SECRET:
         return await call_next(request)
 
-    # Rotas públicas não precisam de secret
     if request.url.path in _PUBLIC_PATHS:
         return await call_next(request)
 
-    # Preflight CORS (OPTIONS) não carrega headers customizados
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    # Valida o header
     provided = request.headers.get("x-api-secret", "").strip()
     if provided != _API_SECRET:
         from starlette.responses import JSONResponse
@@ -154,7 +125,6 @@ async def add_security_headers(request: Request, call_next):
 
 class AnalyzeRequest(BaseModel):
     """Corpo da requisição para análise."""
-
     url: str
 
     @field_validator("url")
@@ -163,87 +133,39 @@ class AnalyzeRequest(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("URL não pode ser vazia.")
-        # Remove protocolo para re-adicionar depois se necessário
         clean = v.lower().replace("http://", "").replace("https://", "")
         if not clean or "." not in clean:
             raise ValueError("URL inválida. Informe um domínio válido (ex: example.com).")
         return v
 
 
-class ListModelsRequest(BaseModel):
-    """Corpo da requisição para listar modelos disponíveis."""
-    provider: str
-    api_key: str
-
-
-class StoreAPIKeyRequest(BaseModel):
-    """Corpo da requisição para salvar uma API key."""
-    device_id: str
-    provider: str
-    api_key: str
-    model: str = ""
-
-    @field_validator("device_id")
-    @classmethod
-    def validate_device_id(cls, v: str) -> str:
-        v = v.strip()
-        if not v or len(v) < 16:
-            raise ValueError("device_id inválido.")
-        return v
-
-    @field_validator("api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        v = v.strip()
-        if not v or len(v) < 5:
-            raise ValueError("API key inválida.")
-        return v
-
-
-class UpdateModelRequest(BaseModel):
-    """Corpo da requisição para atualizar o modelo de um provider."""
-    device_id: str
-    provider: str
-    model: str
-
-
-class StoredModelsRequest(BaseModel):
-    """Corpo da requisição para listar modelos usando key armazenada."""
-    device_id: str
-    provider: str
-
-
 class AnalyzeResponse(BaseModel):
-    """Resposta completa da análise."""
-
+    """Resposta da análise (sem LLM)."""
     url: str
     headers: dict
     score: dict
+
+
+class ReportRequest(BaseModel):
+    """Corpo da requisição para gerar relatório de IA."""
+    url: str
+    headers: dict[str, Any]
+    score: dict[str, Any]
+
+
+class ReportResponse(BaseModel):
+    """Resposta do relatório de IA."""
     explanations: dict
     summary: str
-    analysis_id: int
 
 
-class HistoryItem(BaseModel):
-    """Item do histórico de análises."""
-
-    id: int
+class ExportRequest(BaseModel):
+    """Corpo da requisição para exportar PDF."""
     url: str
-    score: float
-    classification: str
-    created_at: str
-
-
-class HistoryDetailResponse(BaseModel):
-    """Detalhes completos de uma análise do histórico."""
-
-    id: int
-    url: str
-    score: dict
-    headers: dict
-    explanations: dict
-    summary: str
-    created_at: str
+    headers: dict[str, Any]
+    score: dict[str, Any]
+    explanations: dict[str, Any] = {}
+    summary: str = ""
 
 
 # ──────────────────────────────────────────────
@@ -263,247 +185,15 @@ async def llm_status():
     return get_default_llm_info()
 
 
-@app.post("/models")
-async def list_models(request: ListModelsRequest):
-    """
-    Lista modelos disponíveis para um provider usando a API key informada.
-    Retorna lista de nomes de modelos.
-    """
-    import asyncio
-
-    provider = request.provider.lower().strip()
-    api_key = request.api_key.strip()
-
-    if not api_key:
-        raise HTTPException(status_code=400, detail="API key é obrigatória.")
-
-    try:
-        if provider == "openai":
-            from openai import AsyncOpenAI
-
-            client = AsyncOpenAI(api_key=api_key)
-            response = await client.models.list()
-            # Filtrar apenas modelos de chat (gpt) e ordenar
-            models = sorted(
-                [m.id for m in response.data if any(
-                    k in m.id for k in ("gpt-4", "gpt-3.5", "o1", "o3", "o4")
-                ) and "realtime" not in m.id and "audio" not in m.id],
-                key=lambda x: x,
-            )
-            return {"models": models}
-
-        elif provider == "anthropic":
-            # Anthropic não tem endpoint de listar modelos — usamos lista conhecida
-            # Validamos a key fazendo uma chamada mínima
-            from anthropic import AsyncAnthropic
-
-            client = AsyncAnthropic(api_key=api_key)
-            try:
-                await client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=1,
-                    messages=[{"role": "user", "content": "hi"}],
-                )
-            except Exception:
-                pass  # key pode ser válida mesmo se modelo específico falhar
-
-            models = [
-                "claude-sonnet-4-20250514",
-                "claude-3-5-sonnet-20241022",
-                "claude-3-5-haiku-20241022",
-                "claude-3-opus-20240229",
-                "claude-3-haiku-20240307",
-            ]
-            return {"models": models}
-
-        elif provider == "gemini":
-            from google import genai
-
-            client = genai.Client(api_key=api_key)
-            response = await asyncio.to_thread(client.models.list)
-            models = sorted(
-                [
-                    m.name.replace("models/", "")
-                    for m in response
-                    if "generateContent" in (m.supported_actions or [])
-                ],
-                key=lambda x: x,
-            )
-            return {"models": models}
-
-        elif provider == "openrouter":
-            from openai import AsyncOpenAI
-
-            client = AsyncOpenAI(
-                api_key=api_key,
-                base_url="https://openrouter.ai/api/v1",
-            )
-            response = await client.models.list()
-            models = sorted(
-                [m.id for m in response.data if ":free" in m.id or "step" in m.id.lower()],
-                key=lambda x: x,
-            )
-            # Se a lista ficar vazia, retorna todos
-            if not models:
-                models = sorted([m.id for m in response.data], key=lambda x: x)
-            return {"models": models}
-
-        else:
-            raise HTTPException(status_code=400, detail=f"Provider '{provider}' não suportado.")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=401,
-            detail=f"Erro ao listar modelos. Verifique sua API key. ({type(e).__name__}: {str(e)[:120]})",
-        )
-
-
-# ──────────────────────────────────────────────
-#  API Keys — armazenamento seguro
-# ──────────────────────────────────────────────
-
-
-@app.post("/api-keys/store")
-async def store_api_key(request: StoreAPIKeyRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Salva uma API key criptografada no servidor.
-    A key é criptografada com Fernet (AES-128-CBC + HMAC).
-    Nunca é retornada ao frontend após ser salva.
-    """
-    # Verifica se já existe uma key para este device+provider
-    stmt = select(StoredAPIKey).where(
-        StoredAPIKey.device_id == request.device_id,
-        StoredAPIKey.provider == request.provider.lower(),
-    )
-    result = await db.execute(stmt)
-    existing = result.scalar_one_or_none()
-
-    encrypted = encrypt_api_key(request.api_key)
-    hint = get_key_hint(request.api_key)
-
-    if existing:
-        existing.encrypted_key = encrypted
-        existing.key_hint = hint
-        existing.model = request.model
-        existing.updated_at = datetime.now(timezone.utc)
-    else:
-        new_key = StoredAPIKey(
-            device_id=request.device_id,
-            provider=request.provider.lower(),
-            encrypted_key=encrypted,
-            key_hint=hint,
-            model=request.model,
-        )
-        db.add(new_key)
-
-    await db.commit()
-
-    return {
-        "status": "saved",
-        "provider": request.provider.lower(),
-        "hint": hint,
-        "model": request.model,
-    }
-
-
-@app.get("/api-keys/{device_id}")
-async def list_stored_keys(device_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Lista API keys salvas para um dispositivo.
-    Retorna apenas provider, hint e modelo — NUNCA a key real.
-    """
-    stmt = select(StoredAPIKey).where(StoredAPIKey.device_id == device_id)
-    result = await db.execute(stmt)
-    keys = result.scalars().all()
-
-    return {
-        "keys": [
-            {
-                "provider": k.provider,
-                "hint": k.key_hint,
-                "model": k.model or "",
-                "updated_at": k.updated_at.isoformat() if k.updated_at else "",
-            }
-            for k in keys
-        ]
-    }
-
-
-@app.delete("/api-keys/{device_id}/{provider}")
-async def delete_stored_key(device_id: str, provider: str, db: AsyncSession = Depends(get_db)):
-    """Remove uma API key armazenada."""
-    stmt = delete(StoredAPIKey).where(
-        StoredAPIKey.device_id == device_id,
-        StoredAPIKey.provider == provider.lower(),
-    )
-    await db.execute(stmt)
-    await db.commit()
-    return {"status": "deleted", "provider": provider.lower()}
-
-
-@app.put("/api-keys/model")
-async def update_stored_model(request: UpdateModelRequest, db: AsyncSession = Depends(get_db)):
-    """Atualiza o modelo selecionado para um provider já salvo."""
-    stmt = select(StoredAPIKey).where(
-        StoredAPIKey.device_id == request.device_id,
-        StoredAPIKey.provider == request.provider.lower(),
-    )
-    result = await db.execute(stmt)
-    existing = result.scalar_one_or_none()
-
-    if not existing:
-        raise HTTPException(status_code=404, detail="API key não encontrada para este provider.")
-
-    existing.model = request.model
-    existing.updated_at = datetime.now(timezone.utc)
-    await db.commit()
-
-    return {"status": "updated", "provider": request.provider.lower(), "model": request.model}
-
-
-@app.post("/api-keys/models")
-async def list_stored_models(request: StoredModelsRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Lista modelos disponíveis usando uma API key armazenada.
-    Descriptografa a key internamente — nunca a expõe.
-    """
-    stmt = select(StoredAPIKey).where(
-        StoredAPIKey.device_id == request.device_id,
-        StoredAPIKey.provider == request.provider.lower(),
-    )
-    result = await db.execute(stmt)
-    stored = result.scalar_one_or_none()
-
-    if not stored:
-        raise HTTPException(status_code=404, detail="Nenhuma API key salva para este provider.")
-
-    try:
-        api_key = decrypt_api_key(stored.encrypted_key)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Erro ao descriptografar a key. Salve novamente.")
-
-    # Reutiliza a lógica de listar modelos
-    return await list_models(ListModelsRequest(provider=request.provider, api_key=api_key))
-
-
-# ──────────────────────────────────────────────
-#  Helpers
-# ──────────────────────────────────────────────
-
-
-
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depends(get_db)):
+async def analyze(request: AnalyzeRequest):
     """
-    Fase 1: coleta headers + calcula score + salva no banco.
-    Retorna imediatamente sem aguardar o LLM.
-    O relatório de IA é gerado separadamente via POST /analysis/{id}/report.
+    Analisa os security headers de uma URL.
+    Retorna headers coletados + score calculado.
+    O relatório de IA é gerado separadamente via POST /report.
     """
     url = request.url
 
-    # 1-2. Coleta e análise de headers
     try:
         analysis: AnalysisResult = await analyze_url(url)
     except httpx.InvalidURL:
@@ -524,191 +214,50 @@ async def analyze(request: AnalyzeRequest, raw: Request, db: AsyncSession = Depe
             detail=f"Erro inesperado ao analisar a URL: {str(e)}",
         )
 
-    # 3. Calcular score
     score_result: ScoreResult = calculate_score(analysis)
 
     headers_dict = {k: v.to_dict() for k, v in analysis.headers.items()}
     score_dict = score_result.to_dict()
 
-    # 4. Salvar resultado parcial (sem LLM) no banco
-    partial_result = {
-        "url": url,
-        "headers": headers_dict,
-        "score": score_dict,
-        "explanations": {},
-        "summary": "",
-    }
-
-    device_id = raw.headers.get("x-device-id", "").strip() or None
-
-    db_analysis = Analysis(
-        url=url,
-        score=score_result.total_score,
-        classification=score_result.classification,
-        device_id=device_id,
-    )
-    db_analysis.set_result(partial_result)
-
-    db.add(db_analysis)
-    await db.commit()
-    await db.refresh(db_analysis)
-
-    # 5. Retornar imediatamente
     return AnalyzeResponse(
         url=url,
         headers=headers_dict,
         score=score_dict,
-        explanations={},
-        summary="",
-        analysis_id=db_analysis.id,
     )
 
 
-class ReportResponse(BaseModel):
-    """Resposta do relatório de IA (fase 2)."""
-    explanations: dict
-    summary: str
-
-
-@app.post("/analysis/{analysis_id}/report", response_model=ReportResponse)
-async def generate_report(analysis_id: int, db: AsyncSession = Depends(get_db)):
+@app.post("/report", response_model=ReportResponse)
+async def generate_report(request: ReportRequest):
     """
-    Fase 2: gera explicações LLM + resumo executivo para uma análise existente.
-    Atualiza o registro no banco e retorna o relatório.
-    Se o relatório já foi gerado, retorna o resultado salvo diretamente.
+    Gera explicações LLM + resumo executivo para uma análise.
+    Recebe os dados no body (não usa banco de dados).
     """
-    db_analysis = await db.get(Analysis, analysis_id)
-    if not db_analysis:
-        raise HTTPException(status_code=404, detail="Análise não encontrada.")
-
-    data = db_analysis.get_result()
-
-    # Se já gerado, retorna sem chamar o LLM novamente
-    if data.get("summary") and data.get("explanations"):
-        return ReportResponse(
-            explanations=data["explanations"],
-            summary=data["summary"],
-        )
-
-    headers_dict = data["headers"]
-    score_dict = data["score"]
-
-    explanations = await explain_all_headers(headers_dict)
+    explanations = await explain_all_headers(request.headers)
     summary = await generate_summary(
-        url=data["url"],
-        score=score_dict["total_score"],
-        classification=score_dict["classification"],
-        headers_data=headers_dict,
+        url=request.url,
+        score=request.score.get("total_score", 0),
+        classification=request.score.get("classification", "Regular"),
+        headers_data=request.headers,
     )
-
-    data["explanations"] = explanations
-    data["summary"] = summary
-    db_analysis.set_result(data)
-    await db.commit()
 
     return ReportResponse(explanations=explanations, summary=summary)
 
 
-@app.get("/history", response_model=list[HistoryItem])
-async def get_history(
-    request: Request,
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    db: AsyncSession = Depends(get_db),
-):
-    """Retorna lista de análises anteriores, filtrada por device_id."""
-    device_id = request.headers.get("x-device-id", "").strip()
-
-    stmt = select(Analysis).order_by(desc(Analysis.created_at))
-    if device_id:
-        stmt = stmt.where(Analysis.device_id == device_id)
-    stmt = stmt.limit(limit).offset(offset)
-
-    result = await db.execute(stmt)
-    analyses = result.scalars().all()
-
-    return [
-        HistoryItem(
-            id=a.id,
-            url=a.url,
-            score=a.score,
-            classification=a.classification,
-            created_at=a.created_at.isoformat() if a.created_at else "",
-        )
-        for a in analyses
-    ]
-
-
-@app.delete("/history")
-async def clear_history(request: Request, db: AsyncSession = Depends(get_db)):
-    """Remove análises do histórico do dispositivo."""
-    device_id = request.headers.get("x-device-id", "").strip()
-
-    stmt = delete(Analysis)
-    if device_id:
-        stmt = stmt.where(Analysis.device_id == device_id)
-    result = await db.execute(stmt)
-    await db.commit()
-    return {"status": "cleared", "deleted": result.rowcount}
-
-
-@app.get("/history/{analysis_id}", response_model=HistoryDetailResponse)
-async def get_history_detail(
-    analysis_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Retorna detalhes completos de uma análise específica."""
-    device_id = request.headers.get("x-device-id", "").strip()
-
-    stmt = select(Analysis).where(Analysis.id == analysis_id)
-    result = await db.execute(stmt)
-    analysis = result.scalar_one_or_none()
-
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Análise não encontrada.")
-
-    # Verifica se a análise pertence ao device que está pedindo
-    if analysis.device_id and device_id and analysis.device_id != device_id:
-        raise HTTPException(status_code=404, detail="Análise não encontrada.")
-
-    stored = analysis.get_result()
-
-    return HistoryDetailResponse(
-        id=analysis.id,
-        url=analysis.url,
-        score=stored.get("score", {}),
-        headers=stored.get("headers", {}),
-        explanations=stored.get("explanations", {}),
-        summary=stored.get("summary", ""),
-        created_at=analysis.created_at.isoformat() if analysis.created_at else "",
-    )
-
-
-@app.get("/export/{analysis_id}")
-async def export_pdf(
-    analysis_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
+@app.post("/export")
+async def export_pdf(request: ExportRequest):
     """Exporta uma análise em formato PDF."""
-    device_id = request.headers.get("x-device-id", "").strip()
+    data = {
+        "url": request.url,
+        "headers": request.headers,
+        "score": request.score,
+        "explanations": request.explanations,
+        "summary": request.summary,
+    }
 
-    stmt = select(Analysis).where(Analysis.id == analysis_id)
-    result = await db.execute(stmt)
-    analysis = result.scalar_one_or_none()
+    pdf_bytes = generate_pdf(data)
 
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Análise não encontrada.")
-
-    # Verifica se a análise pertence ao device que está pedindo
-    if analysis.device_id and device_id and analysis.device_id != device_id:
-        raise HTTPException(status_code=404, detail="Análise não encontrada.")
-
-    stored = analysis.get_result()
-    pdf_bytes = generate_pdf(stored)
-
-    filename = f"secheaders_{analysis.url.replace('https://', '').replace('http://', '').replace('/', '_')}_{analysis.id}.pdf"
+    safe_url = request.url.replace("https://", "").replace("http://", "").replace("/", "_")[:50]
+    filename = f"secheaders_{safe_url}.pdf"
 
     return Response(
         content=pdf_bytes,
