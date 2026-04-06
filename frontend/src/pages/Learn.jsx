@@ -812,7 +812,7 @@ function LessonModal({ lesson, section, isCompleted, onClose, onComplete }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="w-full sm:max-w-lg flex flex-col rounded-t-[28px] sm:rounded-[24px] overflow-hidden"
+        className="w-full sm:max-w-2xl flex flex-col rounded-t-[28px] sm:rounded-[24px] overflow-hidden"
         style={{ maxHeight: '90vh', backgroundColor: '#0d1526', border: '1px solid rgba(30,41,59,0.9)' }}
         onClick={e => e.stopPropagation()}
       >
