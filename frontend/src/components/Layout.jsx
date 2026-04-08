@@ -97,7 +97,7 @@ export default function Layout() {
               </p>
               <p className="text-sm text-surface-200 font-medium">Vinícius Lacerda Borges</p>
               <p className="text-[11px] text-surface-500 mt-0.5">
-                Sistemas de Informação / UNIFAP
+                Sistemas de Informação / UniFAP
               </p>
               <a
                 href="https://github.com/viniciuslacerd4"
@@ -115,9 +115,9 @@ export default function Layout() {
               <Quotes className="w-4 h-4 text-primary-500/30 mb-2 hidden md:block md:ml-auto" />
               <p className="text-[13px] text-surface-300/90 italic leading-[1.6] font-light">
                 "There are only two types of companies:
-                <br className="hidden sm:block" />
+                <br />
                 those that have been hacked
-                <br className="hidden sm:block" />
+                <br />
                 and those that{' '}
                 <span className="text-primary-400/80 font-normal">will be.</span>"
               </p>
