@@ -276,7 +276,7 @@ A página **Aprender** oferece um roadmap interativo com:
 
 **Aluno:** Vinícius Lacerda Borges
 **Curso:** Sistemas de Informação
-**Instituição:** UNIFAP — Universidade Federal do Amapá
+**Instituição:** Centro Universitário Paraíso (UniFAP) — Juazeiro do Norte, CE
 **Período:** 2026.1
 
 ---
