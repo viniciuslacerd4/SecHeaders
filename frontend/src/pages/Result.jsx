@@ -11,7 +11,6 @@ import HeaderCard from '../components/HeaderCard'
 import ExportButton from '../components/ExportButton'
 import { getAnalysisDetail, fetchAiReport } from '../lib/api'
 import { cleanUrl, formatDate, SEVERITY_CONFIG } from '../lib/utils'
-import { playHackSound } from '../lib/hackSound'
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'info']
 
@@ -203,7 +202,6 @@ export default function Result() {
   const [data, setData] = useState(location.state?.result || null)
   const [loading, setLoading] = useState(!data && !!id)
   const [error, setError] = useState('')
-  const soundPlayedRef = useRef(false)
 
   // AI report state — separate from the base analysis
   const initialHasAi = !!(data?.summary && data?.explanations && Object.keys(data.explanations).length > 0)
@@ -247,10 +245,6 @@ export default function Result() {
         setAiReport({ explanations: report.explanations, summary: report.summary, loading: false, error: '' })
         // Update local data state too
         setData((prev) => ({ ...prev, explanations: report.explanations, summary: report.summary }))
-        if (!soundPlayedRef.current) {
-          soundPlayedRef.current = true
-          playHackSound()
-        }
       })
       .catch((err) => setAiReport({ explanations: {}, summary: '', loading: false, error: err.message || 'Erro ao gerar relatório.' }))
   }, [data?.id])

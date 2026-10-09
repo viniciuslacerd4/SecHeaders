@@ -1,146 +1,75 @@
-import { useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { House, ClockCounterClockwise, ArrowsLeftRight, Quotes, GithubLogo, BookOpen } from '@phosphor-icons/react'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { MotionConfig, motion, useReducedMotion } from 'framer-motion'
+import { ArrowUpRight, BookOpenText, ChartBar, ClockCounterClockwise, GithubLogo, MagnifyingGlass, Pause, Play } from '@phosphor-icons/react'
 import AnalysisToast from './AnalysisToast'
 import { useAnalysis } from './AnalysisContext'
 import Logo from './Logo'
+import AmbientBackground from './AmbientBackground'
 
 const NAV_ITEMS = [
-  { to: '/', icon: House, label: 'Analisar', hideOnMobile: true },
+  { to: '/', icon: MagnifyingGlass, label: 'Analisar' },
   { to: '/history', icon: ClockCounterClockwise, label: 'Histórico' },
-  { to: '/compare', icon: ArrowsLeftRight, label: 'Comparar' },
-  { to: '/learn', icon: BookOpen, label: 'Aprender' },
+  { to: '/compare', icon: ChartBar, label: 'Comparar' },
+  { to: '/learn', icon: BookOpenText, label: 'Aprofundamento' },
 ]
 
 export default function Layout() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [motionPaused, setMotionPaused] = useState(false)
+  const reducedMotion = useReducedMotion()
+  const moving = !motionPaused && !reducedMotion
   const { setNavigate } = useAnalysis()
 
-  // Passa o navigate para o contexto global
-  useEffect(() => {
-    setNavigate(navigate)
-  }, [navigate, setNavigate])
+  useEffect(() => { setNavigate(navigate) }, [navigate, setNavigate])
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
 
   return (
-    <div className="min-h-screen bg-grid flex flex-col overflow-x-hidden">
-      {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary-600/5 rounded-full blur-3xl" />
-      </div>
-
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-surface-800/80 bg-surface-950/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <NavLink to="/" className="flex items-center gap-2.5 group">
-              <div className="relative">
-                <Logo className="w-10 h-10 transition-transform group-hover:scale-110 drop-shadow-[0_0_10px_rgba(99,102,241,0.4)]" />
-              </div>
-              <span className="text-lg font-bold tracking-tight">
-                <span className="text-primary-400">Sec</span>
-                <span className="text-surface-100">Headers</span>
-              </span>
+    <MotionConfig reducedMotion={motionPaused ? 'always' : 'user'}>
+    <div className={`app-shell min-h-screen flex flex-col ${moving ? '' : 'motion-paused'}`}>
+      <AmbientBackground />
+      <a href="#main-content" className="skip-link">Ir para o conteúdo</a>
+      <nav className="sticky top-0 z-50 border-b border-surface-700/50 bg-surface-950/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-6 py-3 sm:py-0 sm:h-[72px]">
+            <NavLink to="/" className="brand-link flex items-center gap-3 shrink-0 w-fit" aria-label="SecHeaders, início">
+              <Logo className="w-10 h-10" />
+              <span className="text-[17px] font-semibold tracking-tight text-surface-50">SecHeaders<span className="text-primary-300">.</span></span>
             </NavLink>
-
-            {/* Nav links + AI button */}
-            <div className="flex items-center gap-1">
-              {NAV_ITEMS.map(({ to, icon: Icon, label, hideOnMobile }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === '/'}
-                  className={({ isActive }) =>
-                    `${hideOnMobile ? 'hidden sm:flex' : 'flex'} items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
-                      ? 'bg-primary-600/15 text-primary-300 shadow-sm'
-                      : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60'
-                    }`
-                  }
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{label}</span>
+            <div className="flex items-center gap-1 -mx-2 sm:mx-0 overflow-x-auto" aria-label="Navegação principal">
+              {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+                <NavLink key={to} to={to} end={to === '/'} className="app-nav-link">
+                  {({ isActive }) => <>
+                    {isActive && <motion.span className="nav-indicator" layoutId="main-navigation" transition={{ type: 'spring', stiffness: 420, damping: 36 }} />}
+                    <Icon size={17} /><span>{label}</span>
+                  </>}
                 </NavLink>
               ))}
-
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Content */}
-      <main className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 flex flex-col min-h-[calc(100dvh-64px)]">
-        <Outlet />
+      <main id="main-content" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 flex-1">
+        <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .32, ease: [.22, 1, .36, 1] }}><Outlet /></motion.div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-surface-800/60 bg-surface-950/60 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            {/* Left – Logo & project name */}
-            <div className="flex items-start gap-3">
-              <Logo className="w-10 h-10 shrink-0 drop-shadow-[0_0_8px_rgba(99,102,241,0.25)]" />
-              <div>
-                <p className="text-sm font-bold tracking-tight">
-                  <span className="text-primary-400">Sec</span>
-                  <span className="text-surface-100">Headers</span>
-                </p>
-                <p className="text-[11px] text-surface-500 leading-snug mt-0.5">
-                  Ferramenta de Análise de<br />Security Headers com IA
-                </p>
-              </div>
-            </div>
-
-            {/* Center – Author & academic info */}
-            <div className="text-left md:text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-surface-400 mb-2">
-                Trabalho de Conclusão de Curso
-              </p>
-              <p className="text-sm text-surface-200 font-medium">Vinícius Lacerda Borges</p>
-              <p className="text-[11px] text-surface-500 mt-0.5">
-                Sistemas de Informação / UniFAP
-              </p>
-              <a
-                href="https://github.com/viniciuslacerd4"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mt-2 text-[11px] text-surface-400 hover:text-primary-400 transition-colors duration-200"
-              >
-                <GithubLogo className="w-3.5 h-3.5" />
-                github.com/viniciuslacerd4
-              </a>
-            </div>
-
-            {/* Right – Quote */}
-            <div className="text-left md:text-right max-w-full md:max-w-[280px] md:ml-auto">
-              <Quotes className="w-4 h-4 text-primary-500/30 mb-2 hidden md:block md:ml-auto" />
-              <p className="text-[13px] text-surface-300/90 italic leading-[1.6] font-light">
-                "There are only two types of companies:
-                <br />
-                those that have been hacked
-                <br />
-                and those that{' '}
-                <span className="text-primary-400/80 font-normal">will be.</span>"
-              </p>
-              <p className="text-[10px] text-surface-500 mt-2 font-medium tracking-wide uppercase">
-                — Robert Mueller
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom line */}
-          <div className="mt-6 pt-4 border-t border-surface-800/40 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="text-[10px] text-surface-600 text-center sm:text-left">
-              © {new Date().getFullYear()} SecHeaders — Projeto acadêmico sem fins lucrativos.
-            </p>
-            <p className="text-[10px] text-surface-600 text-center sm:text-right">
-              Análises baseadas nas recomendações OWASP e boas práticas de segurança web.
-            </p>
+      <footer className="border-t border-surface-700/50 bg-surface-950/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between gap-3">
+          <p className="text-[11px] text-surface-500">© {new Date().getFullYear()} SecHeaders · Vinícius Lacerda Borges · UniFAP</p>
+          <div className="flex items-center gap-5">
+          <button type="button" onClick={() => setMotionPaused(paused => !paused)} disabled={!!reducedMotion} aria-pressed={moving} aria-label={moving ? 'Pausar movimento do fundo' : 'Ativar movimento do fundo'} className="motion-toggle" title={reducedMotion ? 'Movimento reduzido nas preferências do sistema' : undefined}>
+            {moving ? <Pause size={13} /> : <Play size={13} />} {reducedMotion ? 'Movimento reduzido' : moving ? 'Pausar movimento' : 'Ativar movimento'}
+          </button>
+          <a href="https://github.com/viniciuslacerd4" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs text-surface-400 hover:text-primary-300 h-fit">
+            <GithubLogo size={17} /> GitHub <ArrowUpRight size={14} />
+          </a>
           </div>
         </div>
       </footer>
-
-      {/* Analysis Toast (global, persists across pages) */}
       <AnalysisToast />
     </div>
+    </MotionConfig>
   )
 }

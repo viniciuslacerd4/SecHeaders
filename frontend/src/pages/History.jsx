@@ -53,10 +53,11 @@ export default function History() {
       transition={{ duration: 0.3 }}
       className="space-y-6 flex-1"
     >
-      <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <ClockCounterClockwise className="w-5 h-5 text-primary-400" />
-          <h1 className="text-xl font-bold text-surface-100">Histórico de Análises</h1>
+      <div className="flex items-start sm:items-end justify-between flex-wrap gap-3 border-b border-surface-700/60 pb-6">
+        <div>
+          <p className="eyebrow mb-2">Registro de análises</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-50">Histórico</h1>
+          <p className="text-sm text-surface-400 mt-2">Consulte e revisite diagnósticos anteriores.</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-surface-500">
@@ -100,12 +101,9 @@ export default function History() {
           transition={{ duration: 0.4 }}
           className="flex flex-col items-center justify-center py-20 text-center"
         >
-          {/* Glow orb */}
           <div className="relative mb-8">
-            <div className="absolute inset-0 rounded-full bg-primary-500/10 blur-2xl scale-150 pointer-events-none" />
-            <div className="relative w-24 h-24 rounded-3xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(145deg, rgba(99,102,241,0.12), rgba(99,102,241,0.04))', border: '1px solid rgba(99,102,241,0.15)' }}>
-              <ClockCounterClockwise className="w-10 h-10 text-primary-400/60" weight="thin" />
+            <div className="relative w-20 h-20 rounded-xl flex items-center justify-center bg-surface-900 border border-surface-700">
+              <ClockCounterClockwise className="w-8 h-8 text-primary-300" />
             </div>
           </div>
 
@@ -114,17 +112,9 @@ export default function History() {
             Analise uma URL e o histórico completo aparecerá aqui.
           </p>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-8 w-48">
-            <div className="flex-1 h-px bg-surface-800" />
-            <span className="text-[10px] text-surface-600 uppercase tracking-widest font-semibold">ou</span>
-            <div className="flex-1 h-px bg-surface-800" />
-          </div>
-
           <Link
             to="/"
-            className="group inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl font-semibold text-sm text-white transition-all duration-200"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #818cf8)', boxShadow: '0 8px 24px rgba(99,102,241,0.3)' }}
+            className="group inline-flex items-center gap-2.5 px-6 py-3 rounded-lg font-semibold text-sm text-surface-950 bg-primary-400 hover:bg-primary-300 transition-colors"
           >
             <Globe className="w-4 h-4" />
             Analisar uma URL

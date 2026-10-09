@@ -1,138 +1,78 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, ArrowUpRight, BookOpenText, ChartBar, CircleNotch, Globe, Plus } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import { MagnifyingGlass, ArrowRight, Globe, Lightning, FileText, CircleNotch } from '@phosphor-icons/react'
 import { useAnalysis } from '../components/AnalysisContext'
+import { getHistory } from '../lib/api'
+import { cleanUrl, formatDate } from '../lib/utils'
+import SecurityEmblem from '../components/SecurityEmblem'
+
+const CONTROLS = ['HSTS', 'CSP', 'X-Frame-Options', 'X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy', 'Set-Cookie']
 
 export default function Home() {
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
+  const [recent] = useState(() => getHistory(3))
   const { loading, startAnalysis } = useAnalysis()
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit(event) {
+    event.preventDefault()
     if (!url.trim() || loading) return
-
     setError('')
-
-    try {
-      await startAnalysis(url.trim())
-    } catch (err) {
-      setError(err.message)
-    }
+    try { await startAnalysis(url.trim()) } catch (err) { setError(err.message) }
   }
 
   return (
-    <div className="flex flex-col items-center pt-12 sm:pt-20">
-      {/* Hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center max-w-2xl mx-auto"
-      >
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] mb-4">
-          <span className="text-surface-100">Analise a segurança</span>
-          <br />
-          <span className="bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
-            dos seus headers HTTP
-          </span>
-        </h1>
+    <div className="analysis-workspace">
+      <div className="analysis-hero">
+      <header className="analysis-heading">
+        <h1>Analisar<br /><span>um domínio.</span></h1>
+        <p>Identifique os headers que precisam de correção.</p>
+      </header>
+      <SecurityEmblem />
+      </div>
 
-        <p className="text-surface-400 text-lg sm:text-xl max-w-lg mx-auto leading-relaxed">
-          Insira uma URL e receba um diagnóstico completo com score,
-          explicações detalhadas e recomendações de correção.
-        </p>
-      </motion.div>
-
-      {/* Search form */}
-      <motion.form
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
-        onSubmit={handleSubmit}
-        className="w-full max-w-xl mt-10"
-      >
-        <div className="relative group">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-600 to-primary-400 rounded-2xl opacity-0 group-focus-within:opacity-20 blur transition-opacity duration-300" />
-          <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-surface-900 border border-surface-700/60 rounded-xl overflow-hidden transition-colors group-focus-within:border-primary-500/40">
-            <div className="flex items-center flex-1">
-              <Globe className="w-5 h-5 text-surface-500 ml-4 shrink-0" />
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Digite uma URL (ex: exemplo.com.br)"
-                className="flex-1 bg-transparent px-3 py-4 text-surface-100 placeholder:text-surface-500 focus:outline-none text-base"
-                disabled={loading}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading || !url.trim()}
-              className="flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-3 sm:py-2.5 sm:m-1.5 sm:rounded-lg transition-all duration-200 text-sm shrink-0 border-t border-surface-700/40 sm:border-0"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <CircleNotch className="animate-spin w-4 h-4" />
-                  Analisando…
-                </div>
-              ) : (
-                <>
-                  Analisar
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
+      <motion.form onSubmit={handleSubmit} className="analysis-command" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45, delay: .08, ease: [.22, 1, .36, 1] }}>
+        <label htmlFor="target-url" className="command-label">Domínio ou URL</label>
+        <div className="command-field">
+          <Globe size={22} weight="light" className="command-globe" />
+          <input id="target-url" value={url} onChange={event => { setUrl(event.target.value); if (error) setError('') }} placeholder="seusite.com.br" disabled={loading} autoComplete="url" inputMode="url" autoCapitalize="none" spellCheck={false} aria-describedby={error ? 'analysis-error' : undefined} />
+          <button type="submit" disabled={loading || !url.trim()} className="button-primary">
+            {loading ? <><CircleNotch size={18} className="animate-spin" /><span>Analisando</span></> : <><span>Analisar</span><ArrowRight size={18} /></>}
+          </button>
         </div>
-
-        {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5"
-          >
-            {error}
-          </motion.p>
-        )}
+        {error && <p id="analysis-error" role="alert" className="text-sm text-red-300 mt-4">{error}</p>}
+        <div className="command-footer">
+          <details className="coverage-details">
+            <summary>7 controles HTTP <Plus size={12} /></summary>
+            <div className="coverage-list">{CONTROLS.map(control => <span key={control}>{control}</span>)}</div>
+          </details>
+          <span>Diagnóstico e relatório PDF</span>
+        </div>
       </motion.form>
 
-      {/* Feature cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-16 w-full max-w-3xl"
-      >
-        {[
-          {
-            icon: MagnifyingGlass,
-            title: '7 Headers Analisados',
-            desc: 'HSTS, CSP, X-Frame, X-Content-Type, Referrer-Policy, Permissions-Policy e Set-Cookie.',
-          },
-          {
-            icon: Lightning,
-            title: 'Explicações com IA',
-            desc: 'Cada problema é explicado em linguagem acessível com recomendações práticas.',
-          },
-          {
-            icon: FileText,
-            title: 'Relatório em PDF',
-            desc: 'Exporte o resultado completo como PDF para documentação ou auditoria.',
-          },
-        ].map((feature, i) => (
-          <div
-            key={i}
-            className="group p-5 rounded-xl bg-surface-900/50 border border-surface-800/60 hover:border-surface-700/80 transition-all duration-300"
-          >
-            <div className="w-9 h-9 rounded-lg bg-primary-600/10 flex items-center justify-center mb-3 group-hover:bg-primary-600/20 transition-colors">
-              <feature.icon className="w-4.5 h-4.5 text-primary-400" />
-            </div>
-            <h3 className="font-semibold text-surface-200 text-sm mb-1">{feature.title}</h3>
-            <p className="text-surface-500 text-xs leading-relaxed">{feature.desc}</p>
-          </div>
-        ))}
-      </motion.div>
+      {recent.length > 0 && <section className="recent-analyses">
+        <div className="section-row"><h2>Recentes</h2><Link to="/history">Ver histórico <ArrowUpRight size={14} /></Link></div>
+        {recent.map(item => <Link className="recent-analysis" to={`/result/${item.id}`} key={item.id}>
+          <Globe size={17} className="text-surface-500 shrink-0" />
+          <span className="truncate flex-1">{cleanUrl(item.url)}</span>
+          <span className="hidden sm:block text-xs text-surface-500">{formatDate(item.created_at)}</span>
+          <span className="recent-score">{item.score}<span>/100</span></span><ArrowUpRight size={15} />
+        </Link>)}
+      </section>}
+
+      <div className="workspace-shortcuts">
+        <Link to="/compare" className="workspace-shortcut">
+          <span className="shortcut-icon"><ChartBar size={22} weight="light" /></span>
+          <div><h2>Comparar domínios</h2><p>Dois diagnósticos, lado a lado.</p></div>
+          <ArrowUpRight size={18} className="shortcut-arrow" />
+        </Link>
+        <Link to="/learn" className="workspace-shortcut">
+          <span className="shortcut-icon"><BookOpenText size={22} weight="light" /></span>
+          <div><h2>Aprofundamento</h2><p>Referência, exemplos e prática.</p></div>
+          <ArrowUpRight size={18} className="shortcut-arrow" />
+        </Link>
+      </div>
     </div>
   )
 }

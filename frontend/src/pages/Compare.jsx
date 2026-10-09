@@ -47,10 +47,10 @@ export default function Compare() {
       transition={{ duration: 0.3 }}
       className="space-y-8 flex-1"
     >
-      {/* Title */}
-      <div className="flex items-center gap-3">
-        <ArrowsLeftRight className="w-5 h-5 text-primary-400" />
-        <h1 className="text-xl font-bold text-surface-100">Comparar URLs</h1>
+      <div className="border-b border-surface-700/60 pb-6">
+        <p className="eyebrow mb-2">Análise comparativa</p>
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-50">Comparar URLs</h1>
+        <p className="text-sm text-surface-400 mt-2">Compare a configuração de segurança de dois domínios lado a lado.</p>
       </div>
 
       {/* Form */}
@@ -81,7 +81,7 @@ export default function Compare() {
           <button
             type="submit"
             disabled={loading || !url1.trim() || !url2.trim()}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-3 sm:py-2.5 rounded-lg transition-all duration-200 text-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary-400 hover:bg-primary-300 disabled:opacity-40 disabled:cursor-not-allowed text-surface-950 font-semibold px-5 py-3 sm:py-2.5 rounded-lg transition-colors text-sm"
           >
             {loading ? (
               <>
@@ -114,18 +114,13 @@ export default function Compare() {
         >
           {/* Two site cards hint */}
           <div className="relative mb-8 flex items-center gap-3">
-            <div className="absolute inset-0 bg-primary-500/5 blur-3xl pointer-events-none rounded-full" />
             {['URL A', 'URL B'].map((label, i) => (
               <motion.div
                 key={label}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.1 }}
-                className="w-28 h-20 rounded-2xl flex flex-col items-center justify-center gap-2"
-                style={{
-                  background: 'linear-gradient(145deg, rgba(99,102,241,0.08), rgba(99,102,241,0.03))',
-                  border: '1px solid rgba(99,102,241,0.14)',
-                }}
+                className="w-28 h-20 rounded-lg flex flex-col items-center justify-center gap-2 bg-surface-900 border border-surface-700"
               >
                 <Globe className="w-5 h-5 text-primary-400/50" weight="thin" />
                 <span className="text-[10px] font-bold text-surface-600 uppercase tracking-widest">{label}</span>
@@ -135,8 +130,7 @@ export default function Compare() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.25 }}
-              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
-              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)' }}
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-surface-800 border border-surface-700"
             >
               <ArrowsLeftRight className="w-3.5 h-3.5 text-primary-400" />
             </motion.div>

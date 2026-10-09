@@ -3,15 +3,12 @@ export const SECTIONS = [
     id: 1,
     title: 'Fundamentos de Segurança',
     subtitle: 'Os headers essenciais para toda aplicação web',
-    color: '#6366f1',
-    colorLight: '#818cf8',
     lessons: [
       {
         id: 'x-content-type-options',
         name: 'X-Content-Type-Options',
         abbr: 'XCTO',
         icon: 'ClipboardText',
-        xp: 10,
         difficulty: 'Fácil',
         content: {
           attack: 'MIME Confusion Attack',
@@ -73,7 +70,6 @@ export const SECTIONS = [
         name: 'X-Frame-Options',
         abbr: 'XFO',
         icon: 'Image',
-        xp: 10,
         difficulty: 'Fácil',
         content: {
           attack: 'Clickjacking',
@@ -136,7 +132,6 @@ export const SECTIONS = [
         name: 'Content-Security-Policy',
         abbr: 'CSP',
         icon: 'ShieldCheck',
-        xp: 30,
         difficulty: 'Difícil',
         content: {
           attack: 'XSS (Cross-Site Scripting)',
@@ -201,7 +196,6 @@ export const SECTIONS = [
         name: 'X-XSS-Protection',
         abbr: 'XSS',
         icon: 'Prohibit',
-        xp: 10,
         difficulty: 'Fácil',
         content: {
           attack: 'XSS em browsers legados',
@@ -265,15 +259,12 @@ export const SECTIONS = [
     id: 2,
     title: 'Segurança de Transporte',
     subtitle: 'Garanta conexões seguras e privadas',
-    color: '#10b981',
-    colorLight: '#34d399',
     lessons: [
       {
         id: 'hsts',
         name: 'Strict-Transport-Security',
         abbr: 'HSTS',
         icon: 'LockKey',
-        xp: 20,
         difficulty: 'Médio',
         content: {
           attack: 'SSL Stripping / MITM',
@@ -337,7 +328,6 @@ export const SECTIONS = [
         name: 'Referrer-Policy',
         abbr: 'RP',
         icon: 'LinkSimple',
-        xp: 15,
         difficulty: 'Médio',
         content: {
           attack: 'Information Leakage via Referer',
@@ -401,7 +391,6 @@ export const SECTIONS = [
         name: 'Permissions-Policy',
         abbr: 'PP',
         icon: 'Sliders',
-        xp: 20,
         difficulty: 'Médio',
         content: {
           attack: 'Feature Abuse via XSS',
@@ -466,15 +455,12 @@ export const SECTIONS = [
     id: 3,
     title: 'Isolamento Cross-Origin',
     subtitle: 'Proteção contra ataques entre origens diferentes',
-    color: '#f97316',
-    colorLight: '#fb923c',
     lessons: [
       {
         id: 'coop',
         name: 'Cross-Origin-Opener-Policy',
         abbr: 'COOP',
         icon: 'FrameCorners',
-        xp: 25,
         difficulty: 'Difícil',
         content: {
           attack: 'XS-Leaks / Spectre',
@@ -538,7 +524,6 @@ export const SECTIONS = [
         name: 'Cross-Origin-Embedder-Policy',
         abbr: 'COEP',
         icon: 'Shield',
-        xp: 25,
         difficulty: 'Difícil',
         content: {
           attack: 'Spectre / Side-Channel',
@@ -602,7 +587,6 @@ export const SECTIONS = [
         name: 'Cross-Origin-Resource-Policy',
         abbr: 'CORP',
         icon: 'Package',
-        xp: 20,
         difficulty: 'Médio',
         content: {
           attack: 'Cross-Site Resource Inclusion',
@@ -667,15 +651,12 @@ export const SECTIONS = [
     id: 4,
     title: 'Cache e Dados',
     subtitle: 'Controle o armazenamento e ciclo de vida dos dados',
-    color: '#8b5cf6',
-    colorLight: '#a78bfa',
     lessons: [
       {
         id: 'cache-control',
         name: 'Cache-Control',
         abbr: 'CC',
         icon: 'FloppyDisk',
-        xp: 15,
         difficulty: 'Médio',
         content: {
           attack: 'Cache Information Disclosure',
@@ -740,7 +721,6 @@ export const SECTIONS = [
         name: 'Clear-Site-Data',
         abbr: 'CSD',
         icon: 'Broom',
-        xp: 15,
         difficulty: 'Médio',
         content: {
           attack: 'Session Persistence pós-logout',

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#111312"/>
+  <path d="M0 0h1200v630H0z" fill="none" stroke="#334741" stroke-width="2"/>
+  <image href="brand/secheaders-monogram.png" x="74" y="68" width="76" height="76"/>
+  <text x="158" y="118" fill="#edf2f0" font-family="Arial, sans-serif" font-size="34" font-weight="700">SecHeaders</text>
+  <text x="74" y="260" fill="#d5ed68" font-family="Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="4">SECURITY ANALYSIS / HTTP</text>
+  <text x="74" y="340" fill="#f7f9f8" font-family="Arial, sans-serif" font-size="55" font-weight="700">Segurança web começa na</text>
+  <text x="74" y="408" fill="#f7f9f8" font-family="Arial, sans-serif" font-size="55" font-weight="700">resposta do servidor.</text>
+  <text x="74" y="494" fill="#8fa5a0" font-family="Arial, sans-serif" font-size="23">Analise headers HTTP. Entenda os riscos. Priorize correções.</text>
+  <path d="M74 548h1052" stroke="#334741"/>
+  <text x="74" y="586" fill="#708680" font-family="Arial, sans-serif" font-size="18">sec-headers.vercel.app</text>
+</svg>
