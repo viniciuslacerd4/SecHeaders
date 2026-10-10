@@ -26,7 +26,16 @@ export default function Home() {
     <div className="analysis-workspace">
       <div className="analysis-hero">
       <header className="analysis-heading">
-        <h1>Analisar<br /><span>um domínio.</span></h1>
+        <div className="heading-signature" aria-hidden="true"><i /><i /><i /><span /></div>
+        <h1>
+          <span className="heading-line">Analisar</span>
+          <span className="heading-domain">
+            <span className="heading-domain-prefix">um </span>
+            <span className="heading-domain-word">domínio<span className="heading-period">.</span></span>
+            <span className="heading-bracket heading-bracket-start" aria-hidden="true" />
+            <span className="heading-bracket heading-bracket-end" aria-hidden="true" />
+          </span>
+        </h1>
         <p>Identifique os headers que precisam de correção.</p>
       </header>
       <SecurityEmblem />

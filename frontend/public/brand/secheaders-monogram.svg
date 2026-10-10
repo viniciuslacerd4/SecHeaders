@@ -1,4 +1,3 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 84" fill="none">
-  <path fill="#ECECEA" d="M21 9H59Q69 9 69 19V25H59V19H21V45H44V55H21Q11 55 11 45V19Q11 9 21 9Z"/>
-  <path fill="#ECECEA" d="M32 29H59Q69 29 69 39V65Q69 75 59 75H11V62H21V65H59V39H32Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  <path fill="#ECECEA" d="M13.5 8H29.3V18.5H18.5V34.7H61.5V18.5H50.7V8H66.5L72 13.5V66.5L66.5 72H50.7V61.5H61.5V45.3H18.5V61.5H29.3V72H13.5L8 66.5V13.5L13.5 8Z"/>
 </svg>

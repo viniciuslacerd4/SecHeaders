@@ -35,7 +35,7 @@ export default function Layout() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-6 py-3 sm:py-0 sm:h-[72px]">
             <NavLink to="/" className="brand-link flex items-center gap-3 shrink-0 w-fit" aria-label="SecHeaders, início">
               <Logo className="w-10 h-10" />
-              <span className="text-[17px] font-semibold tracking-tight text-surface-50">SecHeaders<span className="text-primary-300">.</span></span>
+              <span className="text-[17px] font-semibold tracking-tight text-surface-50">SecHeaders</span>
             </NavLink>
             <div className="flex items-center gap-1 -mx-2 sm:mx-0 overflow-x-auto" aria-label="Navegação principal">
               {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
