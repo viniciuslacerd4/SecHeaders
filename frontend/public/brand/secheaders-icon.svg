@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 80 80" fill="none">
+  <rect width="80" height="80" rx="15" fill="#111312"/>
+  <g transform="translate(10 10) scale(.75)">
+    <path fill="#ECECEA" d="M13.5 8H29.3V18.5H18.5V34.7H61.5V18.5H50.7V8H66.5L72 13.5V66.5L66.5 72H50.7V61.5H61.5V45.3H18.5V61.5H29.3V72H13.5L8 66.5V13.5L13.5 8Z"/>
+  </g>
+</svg>
